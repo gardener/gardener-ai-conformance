@@ -1,0 +1,94 @@
+════════════════════════════════════════════════════════════════
+  DRA Support Conformance Test
+════════════════════════════════════════════════════════════════
+
+Test Started: 2025-10-28 15:39:18 UTC
+Description: Validates that resource.k8s.io API group is available with required resources
+Primary Namespace: dra-support
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Requirement Specification
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MUST: Support Dynamic Resource Allocation (DRA) APIs to enable more flexible and fine-grained resource requests beyond simple counts.
+
+How we might test it: Verify that all the resource.k8s.io/v1 DRA API resources are enabled.
+
+Note: In Kubernetes v1.33 resource.k8s.io/v1 is not yet available, so the requirement can at best be passed as "Partially Implemented" in Kubernetes v1.33. Mention this accordingly in the final product notes.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Pre-Test Cleanup Check
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ No leftover resources found
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Checking Kubernetes Access
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ kubectl is available
+✅ Connected to Kubernetes cluster
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 1: Check Kubernetes Version
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Server Version: v1.33.4
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 2: Check DRA API Availability
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Checking for resource.k8s.io API group...
+✅ resource.k8s.io API group is available
+ℹ️ Available API versions:
+ℹ️   - resource.k8s.io/v1beta1
+⚠️ resource.k8s.io/v1 is NOT available
+✅ resource.k8s.io/v1beta1 is available
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 3: Enumerate DRA Resources
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Listing all DRA API resources:
+NAME                     SHORTNAMES   APIVERSION                NAMESPACED   KIND
+deviceclasses                         resource.k8s.io/v1beta1   false        DeviceClass
+resourceclaims                        resource.k8s.io/v1beta1   true         ResourceClaim
+resourceclaimtemplates                resource.k8s.io/v1beta1   true         ResourceClaimTemplate
+resourceslices                        resource.k8s.io/v1beta1   false        ResourceSlice
+✅ DRA resources enumerated successfully
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 4: Verify DRA Resource Types
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Testing deviceclasses...
+✅ deviceclasses exists in API
+✅ deviceclasses is accessible (0 items found)
+ℹ️ Testing resourceclaims...
+✅ resourceclaims exists in API
+✅ resourceclaims is accessible (0 items found)
+ℹ️ Testing resourceclaimtemplates...
+✅ resourceclaimtemplates exists in API
+✅ resourceclaimtemplates is accessible (0 items found)
+ℹ️ Testing resourceslices...
+✅ resourceslices exists in API
+✅ resourceslices is accessible (0 items found)
+ℹ️ Resource functionality: 4/4 resources are functional
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Result
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ DRA APIs available but not in GA (v1) version
+ℹ️ Note: resource.k8s.io/v1 API may not be GA yet in Kubernetes v1.33
+ℹ️ DRA v1 APIs are expected to be GA in Kubernetes v1.34 or later
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Result
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ DRA Support is partially implemented (beta/alpha APIs available)
+
+🎉 Test completed successfully!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Final Cleanup
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Test completed. Cleaning up...
+✅ Cleanup completed

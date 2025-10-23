@@ -1,0 +1,213 @@
+════════════════════════════════════════════════════════════════
+  AI Inference Gateway API Support
+════════════════════════════════════════════════════════════════
+
+Test Started: 2025-10-28 15:32:58 UTC
+Description: Validates that the platform supports Gateway API v1 for managing AI inference traffic
+Primary Namespace: ai-inference
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Requirement Specification
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MUST: Support the Kubernetes Gateway API with an implementation for advanced traffic management for inference services, which enables capabilities like weighted traffic splitting, header-based routing (for OpenAI protocol headers), and optional integration with service meshes.
+
+How we might test it: Verify that all the gateway.networking.k8s.io/v1 Gateway API resources are enabled.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Pre-Test Cleanup Check
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ No leftover resources found
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Checking Kubernetes Access
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ kubectl is available
+✅ Connected to Kubernetes cluster
+✅ helm is available
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 1: Create Test Namespaces
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating namespace: ai-inference
+✅ Namespace created: ai-inference
+ℹ️ Creating namespace: gateway-system
+✅ Namespace created: gateway-system
+✅ Test namespaces created
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 2: Install Gateway API CRDs
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Installing Gateway API v1.2.1 CRDs
+customresourcedefinition.apiextensions.k8s.io/gatewayclasses.gateway.networking.k8s.io created
+customresourcedefinition.apiextensions.k8s.io/gateways.gateway.networking.k8s.io created
+customresourcedefinition.apiextensions.k8s.io/grpcroutes.gateway.networking.k8s.io created
+customresourcedefinition.apiextensions.k8s.io/httproutes.gateway.networking.k8s.io created
+customresourcedefinition.apiextensions.k8s.io/referencegrants.gateway.networking.k8s.io created
+✅ Gateway API CRDs installed
+ℹ️ Waiting for CRDs to be established...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 3: Verify Gateway API v1 Resources
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Checking for required Gateway API resources...
+NAME              SHORTNAMES   APIVERSION                          NAMESPACED   KIND
+gatewayclasses    gc           gateway.networking.k8s.io/v1        false        GatewayClass
+gateways          gtw          gateway.networking.k8s.io/v1        true         Gateway
+grpcroutes                     gateway.networking.k8s.io/v1        true         GRPCRoute
+httproutes                     gateway.networking.k8s.io/v1        true         HTTPRoute
+referencegrants   refgrant     gateway.networking.k8s.io/v1beta1   true         ReferenceGrant
+ℹ️ Checking for gateway.networking.k8s.io/v1 resources:
+✅ Found gatewayclasses (gateway.networking.k8s.io/v1)
+✅ Found gateways (gateway.networking.k8s.io/v1)
+✅ Found httproutes (gateway.networking.k8s.io/v1)
+ℹ️ Checking for gateway.networking.k8s.io/v1beta1 resources:
+✅ Found referencegrants (gateway.networking.k8s.io/v1beta1)
+✅ All required Gateway API resources are available
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 4: Install Gateway Controller (Traefik)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Adding Traefik Helm repository
+"traefik" already exists with the same configuration, skipping
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "weaviate" chart repository
+...Successfully got an update from the "kuberay" chart repository
+...Successfully got an update from the "clastix" chart repository
+...Successfully got an update from the "jetstack" chart repository
+...Successfully got an update from the "traefik" chart repository
+...Successfully got an update from the "nvidia" chart repository
+...Successfully got an update from the "bitnami" chart repository
+...Successfully got an update from the "prometheus-adapter" chart repository
+...Successfully got an update from the "prometheus-community" chart repository
+Update Complete. ⎈Happy Helming!⎈
+ℹ️ Installing Traefik gateway controller
+ℹ️ Installing Helm chart: traefik (traefik/traefik) in namespace gateway-system
+  NAME: traefik
+  LAST DEPLOYED: Tue Oct 28 16:33:15 2025
+  NAMESPACE: gateway-system
+  STATUS: deployed
+  REVISION: 1
+  TEST SUITE: None
+  NOTES:
+  traefik with docker.io/traefik:v3.5.3 has been deployed successfully on gateway-system namespace !
+✅ Gateway controller installed
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 5: Create GatewayClass
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+gatewayclass.gateway.networking.k8s.io/test-gateway-class created
+NAME                 CONTROLLER                      ACCEPTED   AGE
+test-gateway-class   traefik.io/gateway-controller   True       1s
+✅ GatewayClass created successfully
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 6: Create Gateway
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+gateway.gateway.networking.k8s.io/test-gateway created
+NAME           CLASS                ADDRESS                                                                      PROGRAMMED   AGE
+test-gateway   test-gateway-class   ac6f81593e60c4aeba2b92532c2874af-1397838299.eu-central-1.elb.amazonaws.com   True         0s
+✅ Gateway created successfully
+ℹ️ Waiting for Gateway to be programmed (max 120s)...
+✅ Gateway is programmed and ready
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 7: Create Test Backend Service
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+service/test-service created
+deployment.apps/test-deployment created
+✅ Test backend service created
+ℹ️ Waiting for deployment to be ready (max 60s)...
+deployment.apps/test-deployment condition met
+✅ Backend deployment is ready
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 8: Create HTTPRoute with Advanced Traffic Management
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating HTTPRoute with weighted traffic splitting and header-based routing
+httproute.gateway.networking.k8s.io/test-httproute created
+NAME             HOSTNAMES   AGE
+test-httproute               1s
+✅ HTTPRoute with weighted traffic splitting and header-based routing created
+ℹ️ Checking HTTPRoute acceptance status...
+✅ HTTPRoute accepted by Gateway
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 9: Create ReferenceGrant for Cross-Namespace Access
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+referencegrant.gateway.networking.k8s.io/test-reference-grant created
+NAME                   AGE
+test-reference-grant   0s
+✅ ReferenceGrant created successfully
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 10: Final Verification
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Verifying all Gateway API resources are functional
+ℹ️ GatewayClasses:
+NAME                 CONTROLLER                      ACCEPTED   AGE
+test-gateway-class   traefik.io/gateway-controller   True       12s
+traefik              traefik.io/gateway-controller   True       20s
+ℹ️ Gateways:
+NAME           CLASS                ADDRESS                                                                      PROGRAMMED   AGE
+test-gateway   test-gateway-class   ac6f81593e60c4aeba2b92532c2874af-1397838299.eu-central-1.elb.amazonaws.com   True         11s
+ℹ️ HTTPRoutes:
+NAME             HOSTNAMES   AGE
+test-httproute               7s
+ℹ️ ReferenceGrants:
+NAME                   AGE
+test-reference-grant   1s
+✅ All Gateway API resources verified
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Summary:
+  ✅ Gateway API v1 resources available (GatewayClass, Gateway, HTTPRoute)
+  ✅ Gateway API v1beta1 resources available (ReferenceGrant)
+  ✅ Gateway controller (Traefik) deployed successfully
+  ✅ GatewayClass created successfully
+  ✅ Gateway programmed and ready
+  ✅ HTTPRoute with advanced features accepted and functional:
+      - Weighted traffic splitting (70/30 split)
+      - Header-based routing (X-Model-Version header)
+  ✅ ReferenceGrant created for cross-namespace references
+
+Core Requirement Status:
+  ✅ All gateway.networking.k8s.io/v1 resources are enabled and available
+  ✅ Platform can instantiate Gateway API resources
+
+The cluster supports Kubernetes Gateway API v1 for AI inference traffic management.
+Advanced traffic management features verified and functional:
+  • Weighted traffic splitting for A/B testing and canary deployments
+  • Header-based routing for model version selection
+  • Cross-namespace service references via ReferenceGrant
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Result
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Gateway API v1 support fully validated - platform ready for AI inference workloads
+
+🎉 Test completed successfully!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Final Cleanup
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Test completed. Cleaning up...
+ℹ️ Executing: helm uninstall traefik -n gateway-system --wait 2>&1 | sed 's/^/  /' >> /Users/D043832/git/gardener-ai-conformance/v1.33/ai_inference/test_result.log || true
+  release "traefik" uninstalled
+ℹ️ Executing: kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml 2>&1 | sed 's/^/  /' >> /Users/D043832/git/gardener-ai-conformance/v1.33/ai_inference/test_result.log || true
+  customresourcedefinition.apiextensions.k8s.io "gatewayclasses.gateway.networking.k8s.io" deleted
+  customresourcedefinition.apiextensions.k8s.io "gateways.gateway.networking.k8s.io" deleted
+  customresourcedefinition.apiextensions.k8s.io "grpcroutes.gateway.networking.k8s.io" deleted
+  customresourcedefinition.apiextensions.k8s.io "httproutes.gateway.networking.k8s.io" deleted
+  customresourcedefinition.apiextensions.k8s.io "referencegrants.gateway.networking.k8s.io" deleted
+ℹ️ Deleting namespace: ai-inference
+  namespace "ai-inference" deleted
+ℹ️ Deleting namespace: gateway-system
+  namespace "gateway-system" deleted
+✅ Cleanup completed

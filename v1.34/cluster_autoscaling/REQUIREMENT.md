@@ -1,0 +1,3 @@
+MUST: If the platform provides a cluster autoscaler or an equivalent mechanism, it must be able to scale up/down node groups containing specific accelerator types based on pending pods requesting those accelerators.
+
+How we might test it: Prepare a node pool with N nodes, configured with a specific accelerator type, with min node pool size of N and max size of at least N+1. Assuming 1 accelerator A per node N, Create (A*N)+1 Pods, each requesting one accelerator resource from that pool, verify that at least one Pod is unschedulable (Pending), and the cluster autoscaler will increase the node count to N+1, causing the Pod to be Running. Delete that Pod, then the cluster autoscaler will remove the idle accelerator node, returning the node count to N.

@@ -1,0 +1,9 @@
+.attic/
+.claude/
+.clinerules/
+.github/copilot-instructions.md
+.temp/
+**/.activate
+**/CLAUDE.md
+**/GEMINI.md
+**/PROMPT.md

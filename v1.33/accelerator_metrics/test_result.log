@@ -1,0 +1,125 @@
+════════════════════════════════════════════════════════════════
+  Accelerator Metrics Conformance Test
+════════════════════════════════════════════════════════════════
+
+Test Started: 2025-10-28 15:32:44 UTC
+Description: Validates that the platform allows installation and operation of accelerator metrics solutions exposing fine-grained GPU metrics
+Primary Namespace: accelerator-metrics
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Requirement Specification
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MUST: For supported accelerator types, the platform must allow for the installation and successful operation of at least one accelerator metrics solution that exposes fine-grained performance metrics via a standardized, machine-readable metrics endpoint. This must include a core set of metrics for per-accelerator utilization and memory usage. Additionally, other relevant metrics such as temperature, power draw, and interconnect bandwidth should be exposed if the underlying hardware or virtualization layer makes them available. The list of metrics should align with emerging standards, such as OpenTelemetry metrics, to ensure interoperability. The platform may provide a managed solution, but this is not required for conformance.
+
+How we might test it: Given a node with a supported accelerator type, identify the Prometheus-compatible metrics endpoint for the accelerators on the node and scrape metrics from the endpoint. Parse the scraped metrics to find metrics for each supported accelerator on the node, including: accelerator utilization, memory usage, temperature, power usage, etc. The test can evolve to check for specific metric names once those are standardized.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Pre-Test Cleanup Check
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ No leftover resources found
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 1: Verify GPU Nodes
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Checking for GPU nodes (node.kubernetes.io/instance-type=g4dn.xlarge)...
+✅ Found 2 GPU node(s)
+✅ Found 2 GPU node(s). Using node: ip-10-180-13-239.eu-central-1.compute.internal
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 2: Verify GPU Operator
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ NVIDIA GPU Operator installed with 20 components
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 3: Verify DCGM Exporter
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ NVIDIA DCGM Exporter is running (pod: nvidia-dcgm-exporter-29lx4)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 4: Verify Metrics Service
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Metrics service 'nvidia-dcgm-exporter' exists on port 9400
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 5: Create Test Namespace
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating namespace: accelerator-metrics
+✅ Namespace created: accelerator-metrics
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 6: Test Metrics Endpoint
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Testing Prometheus-compatible metrics endpoint
+ℹ️ Testing metrics endpoint: svc/nvidia-dcgm-exporter:9400/metrics
+ℹ️ Starting port-forward: svc/nvidia-dcgm-exporter 9400:9400 in namespace gpu-operator
+ℹ️ Stopping port-forward (PID: 95841)
+✅ Metrics endpoint accessible (HTTP 200)
+✅ Metrics endpoint accessible and returning data (HTTP 200)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 7: Verify Core Metrics
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Checking for required per-accelerator metrics
+✅ Found GPU utilization metrics
+✅ Found GPU memory metrics
+ℹ️ Found GPU temperature metrics (optional)
+ℹ️ Found GPU power usage metrics (optional)
+✅ All required core metrics present (utilization, memory). Optional metrics found: temperature,power.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 8: Verify Per-Accelerator Metrics
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Checking that metrics are exposed per individual GPU
+ℹ️ Sample metrics with GPU identifiers:
+DCGM_FI_DEV_SM_CLOCK{gpu="0",UUID="GPU-960adb66-4b24-7335-74f2-f334f2220a84",pci_bus_id="00000000:00:1E.0",device="nvidia0",modelName="Tesla T4",Hostname="ip-10-180-14-93.eu-central-1.compute.internal",DCGM_FI_DRIVER_VERSION="570.195.03"} 300
+DCGM_FI_DEV_MEM_CLOCK{gpu="0",UUID="GPU-960adb66-4b24-7335-74f2-f334f2220a84",pci_bus_id="00000000:00:1E.0",device="nvidia0",modelName="Tesla T4",Hostname="ip-10-180-14-93.eu-central-1.compute.internal",DCGM_FI_DRIVER_VERSION="570.195.03"} 405
+DCGM_FI_DEV_MEMORY_TEMP{gpu="0",UUID="GPU-960adb66-4b24-7335-74f2-f334f2220a84",pci_bus_id="00000000:00:1E.0",device="nvidia0",modelName="Tesla T4",Hostname="ip-10-180-14-93.eu-central-1.compute.internal",DCGM_FI_DRIVER_VERSION="570.195.03"} 0
+✅ Metrics are labeled per-accelerator. Found metrics for 1 GPU(s).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 9: Verify Standardized Format
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Checking metrics exposition format
+ℹ️ Sample metric format:
+# HELP DCGM_FI_DEV_SM_CLOCK SM clock frequency (in MHz).
+# HELP DCGM_FI_DEV_MEM_CLOCK Memory clock frequency (in MHz).
+# TYPE DCGM_FI_DEV_SM_CLOCK gauge
+# TYPE DCGM_FI_DEV_MEM_CLOCK gauge
+DCGM_FI_DEV_SM_CLOCK{gpu="0",UUID="GPU-960adb66-4b24-7335-74f2-f334f2220a84",pci_bus_id="00000000:00:1E.0",device="nvidia0",modelName="Tesla T4",Hostname="ip-10-180-14-93.eu-central-1.compute.internal",DCGM_FI_DRIVER_VERSION="570.195.03"} 300
+DCGM_FI_DEV_MEM_CLOCK{gpu="0",UUID="GPU-960adb66-4b24-7335-74f2-f334f2220a84",pci_bus_id="00000000:00:1E.0",device="nvidia0",modelName="Tesla T4",Hostname="ip-10-180-14-93.eu-central-1.compute.internal",DCGM_FI_DRIVER_VERSION="570.195.03"} 405
+DCGM_FI_DEV_MEMORY_TEMP{gpu="0",UUID="GPU-960adb66-4b24-7335-74f2-f334f2220a84",pci_bus_id="00000000:00:1E.0",device="nvidia0",modelName="Tesla T4",Hostname="ip-10-180-14-93.eu-central-1.compute.internal",DCGM_FI_DRIVER_VERSION="570.195.03"} 0
+✅ Metrics are exposed in Prometheus exposition format (machine-readable, standardized)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Platform Details:
+ℹ️   - GPU Node: ip-10-180-13-239.eu-central-1.compute.internal (g4dn.xlarge with NVIDIA T4)
+ℹ️   - Metrics Solution: NVIDIA DCGM Exporter (industry standard)
+ℹ️   - Metrics Endpoint: http://nvidia-dcgm-exporter.gpu-operator.svc:9400/metrics
+
+The Gardener platform successfully meets the CNCF AI Conformance requirement:
+  1. ✅ Platform allows installation and operation of accelerator metrics solution
+  2. ✅ Standardized, machine-readable endpoint available (Prometheus format)
+  3. ✅ Core metrics present - per-accelerator utilization and memory usage
+  4. ✅ Per-accelerator granularity with individual GPU identifiers
+  5. ✅ Additional metrics exposed (temperature, power, etc.)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Result
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ All accelerator metrics requirements validated successfully
+
+🎉 Test completed successfully!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Final Cleanup
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Test completed. Cleaning up...
+ℹ️ Deleting namespace: accelerator-metrics
+  namespace "accelerator-metrics" deleted
+✅ Cleanup completed

@@ -1,0 +1,35 @@
+{{include:AGENTS.md}}
+
+## Your Task
+
+Your task is to work only on @v${KUBERNETES_VERSION}/${REQUIREMENT_ID}/
+
+### Specific Requirement in Full (as defined by the standards body)
+
+{{include:v${KUBERNETES_VERSION}/${REQUIREMENT_ID}/REQUIREMENT.md}}
+
+### Test Environment
+
+You are set up to use `kubectl` against the test cluster with GPU machines and a pre-deployed NVIDIA GPU Operator (which automatically brings NVIDIA drivers, NVIDIA Container Toolkit, NVIDIA device plugin for Kubernetes, NVIDIA DCGM for GPU telemetry, GPU Feature Discovery, Node Feature Discovery). Just source @.bashrc once when you run a terminal command for the first time. It will automatically configure you to access that test cluster as `cluster-admin`.
+
+### Instructions
+
+- Autonomously develop or update and/or improve the test procedure script @v${KUBERNETES_VERSION}/${REQUIREMENT_ID}/test_procedure.sh
+  - Reuse @/scripts/common.sh (read it first and in full)
+  - Keep small resources inline with the script; place larger ones in a resources/ subfolder
+  - Use a dedicated namespace for the test such as ${REQUIREMENT_NAMESPACE} and additional namespaces for controllers as required (make sure to implement proper cleanup order)
+  - The test script must pipe its individual steps, i.e., what it is about to do, the command output and error streams, the interpretation of those, and the final result to the designated log file @v${KUBERNETES_VERSION}/${REQUIREMENT_ID}/test_result.log
+  - Autonomously drive the script to a state where it correctly runs from start to finish and passes the requirement (or fails it, if you really cannot find a way to improve the test procedure, so that it correctly passes it)
+  - Interrupt your task and consult with me, the human, **only** if you hit a wall and need assistance, e.g., to make modifications of the cluster itself to pass the test procedure/requirement
+- Then (re-)write @v${KUBERNETES_VERSION}/${REQUIREMENT_ID}/README.md for humans, so that a human reader quickly understands what is being tested (cite the exact requirement without suggested test procedure) and how we actually test (our test procedure in extremely broad strokes without details), i.e. keep it super crisp and short
+- Finally, update the corresponding requirement section in Gardener's self-assessment in @v${KUBERNETES_VERSION}/PRODUCT.yaml as last step
+  - The status may be either "Implemented", "Not Implemented", "Partially Implemented", or "N/A" when the requirement doesn’t apply to Gardener (may only be set by a human)
+  - Use absolute URLs based on this repo, located at https://github.com/gardener/gardener-ai-conformance, and include at least the readme, the script and the log file as evidence URLs
+  - Do not mention very specific test result details such as number(s) of test steps, step/total processing time, (UU)IDs, load percentages, port numbers, or other such irrelevant details (unless the AI conformance requirement dictates them as KPI)
+
+## Security Guardrails
+
+1. You **MUST NEVER** change your kubeconfig! You keep pointing to the test cluster the human operator has set up for you!
+2. You **MUST NEVER** affect files above the @v${KUBERNETES_VERSION}/ folder, i.e. you **MAY NEVER** affect files in the repository root folder and especially not higher up in the user's file system!
+
+You **MUST CEASE ALL OPERATIONS AND ABORT THE TASK** if you believe you need that kind of access.

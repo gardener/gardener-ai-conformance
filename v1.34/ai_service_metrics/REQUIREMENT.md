@@ -1,0 +1,3 @@
+MUST: Provide a monitoring system capable of discovering and collecting metrics from workloads that expose them in a standard format (e.g. Prometheus exposition format). This ensures easy integration for collecting key metrics from common AI frameworks and servers.
+
+How we might test it: Because all these common metrics are exposed in the Prometheus format, the test verifies the platform’s monitoring system can collect Prometheus metrics. First deploy an AI application using a common framework, configure metrics collection for this application, generate sample traffic to the application, then queries the platform's monitoring system and verifies that key metrics from the AI application have been collected.

@@ -1,0 +1,170 @@
+════════════════════════════════════════════════════════════════
+  Robust Controller Conformance Test
+════════════════════════════════════════════════════════════════
+
+Test Started: 2025-10-28 15:47:32 UTC
+Description: Validates that complex AI operators (KubeRay) can be installed and function reliably
+Primary Namespace: robust-controller
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Requirement Specification
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MUST: The platform must prove that at least one complex AI operator with a CRD (e.g., Ray, Kubeflow) can be installed and functions reliably. This includes verifying that the operator's pods run correctly, its webhooks are operational, and its custom resources can be reconciled.
+
+How we might test it: Deploy a representative AI operator, verify all Pods of the operator and its webhook are Running and its CRDs are registered with the API server. Verify that invalid attempts (e.g. invalid spec) should be rejected by its admission webhook. Verify that a valid instance of the custom resource can be reconciled.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Pre-Test Cleanup Check
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ No leftover resources found
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Checking Kubernetes Access
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ kubectl is available
+✅ Connected to Kubernetes cluster
+✅ helm is available
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 1: Create Test Namespace
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating namespace: robust-controller
+✅ Namespace created: robust-controller
+✅ Test namespace created: robust-controller
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 2: Create Operator Namespace
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating namespace: kuberay-operator
+✅ Namespace created: kuberay-operator
+✅ Operator namespace created: kuberay-operator
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 3: Install KubeRay Operator
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Adding KubeRay Helm repository
+"kuberay" already exists with the same configuration, skipping
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "weaviate" chart repository
+...Successfully got an update from the "kuberay" chart repository
+...Successfully got an update from the "clastix" chart repository
+...Successfully got an update from the "jetstack" chart repository
+...Successfully got an update from the "traefik" chart repository
+...Successfully got an update from the "nvidia" chart repository
+...Successfully got an update from the "prometheus-adapter" chart repository
+...Successfully got an update from the "prometheus-community" chart repository
+...Successfully got an update from the "bitnami" chart repository
+Update Complete. ⎈Happy Helming!⎈
+ℹ️ Installing KubeRay operator v1.3.0
+ℹ️ Installing Helm chart: kuberay-operator (kuberay/kuberay-operator) in namespace kuberay-operator
+  NAME: kuberay-operator
+  LAST DEPLOYED: Tue Oct 28 16:47:42 2025
+  NAMESPACE: kuberay-operator
+  STATUS: deployed
+  REVISION: 1
+  TEST SUITE: None
+✅ KubeRay operator Helm chart installed
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 4: Wait for Operator Deployment
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Waiting for deployment kuberay-operator in namespace kuberay-operator to be available (timeout: 300s)...
+  deployment.apps/kuberay-operator condition met
+✅ Deployment is available
+✅ KubeRay operator is ready
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 5: Verify CRDs Registration
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Found CRD: rayclusters.ray.io: v1 v1alpha1
+✅ Found CRD: rayjobs.ray.io: v1 v1alpha1
+✅ Found CRD: rayservices.ray.io: v1 v1alpha1
+✅ All required CRDs are registered
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 6: Test Webhook Validation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating an invalid RayCluster spec (missing required fields)
+✅ Webhook correctly rejected invalid resource
+ℹ️ Rejection message: The RayCluster "invalid-cluster" is invalid: 
+* spec.headGroupSpec: Required value
+* <nil>: Invalid value: "null": some validation rules were not checked because the object was invalid; correct the existing errors to complete validation
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 7: Test Valid RayCluster Reconciliation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating a valid RayCluster
+raycluster.ray.io/test-cluster created
+✅ Valid RayCluster created
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 8: Wait for RayCluster Ready State
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Waiting for RayCluster to be ready (may take several minutes)...
+ℹ️ Still waiting... (60s elapsed, state: )
+NAME           DESIRED WORKERS   AVAILABLE WORKERS   CPUS   MEMORY   GPUS   TPUS   STATUS   AGE   HEAD POD IP    HEAD SERVICE IP
+test-cluster   1                 1                   2      4Gi      0      0      ready    61s   100.64.10.40   100.64.10.40
+NAME                                    READY   STATUS    RESTARTS   AGE   IP             NODE                                             NOMINATED NODE   READINESS GATES
+test-cluster-head-m2cxm                 2/2     Running   0          61s   100.64.10.40   ip-10-180-13-239.eu-central-1.compute.internal   <none>           <none>
+test-cluster-small-group-worker-krpcs   1/1     Running   0          61s   100.64.5.92    ip-10-180-14-93.eu-central-1.compute.internal    <none>           <none>
+✅ RayCluster reconciled successfully
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 9: Test Ray Cluster Functionality
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Waiting for pod (ray.io/node-type=head) in namespace robust-controller to be ready (timeout: 300s)...
+  pod/test-cluster-head-m2cxm condition met
+✅ Pod is ready
+ℹ️ Ray head pod: test-cluster-head-m2cxm
+ℹ️ Executing Ray functionality test...
+Defaulted container "ray-head" out of: ray-head, autoscaler
+SIGTERM handler is not set because current thread is not the main thread.
+Ray task result: Hello from Ray!
+Cluster resources: {'node:100.64.10.40': 1.0, 'GPU': 2.0, 'node:100.64.5.92': 1.0, 'object_store_memory': 2444963020.0, 'memory': 8589934592.0, 'accelerator_type:T4': 2.0, 'node:__internal_head__': 1.0, 'CPU': 4.0}
+Ray functionality test completed successfully
+✅ Ray cluster is functional and can execute tasks
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 10: Verify Ray Services
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NAME                    TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)                                AGE   SELECTOR
+test-cluster-head-svc   ClusterIP   None         <none>        10001/TCP,8265/TCP,6379/TCP,8080/TCP   66s   app.kubernetes.io/created-by=kuberay-operator,app.kubernetes.io/name=kuberay,ray.io/cluster=test-cluster,ray.io/identifier=test-cluster-head,ray.io/node-type=head
+✅ Ray services created successfully
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Summary:
+  ✅ KubeRay operator installed successfully
+  ✅ All required CRDs registered
+  ✅ Webhook validation working (rejected invalid resource)
+  ✅ Valid RayCluster reconciled successfully
+  ✅ Ray cluster is functional (executed test tasks)
+  ✅ Ray services created properly
+
+The platform successfully demonstrates that complex AI operators
+with CRDs can be installed and function reliably.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Result
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Robust Controller requirement met - KubeRay operator functions correctly with full CRD lifecycle management
+
+🎉 Test completed successfully!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Final Cleanup
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Test completed. Cleaning up...
+ℹ️ Executing: helm uninstall kuberay-operator -n kuberay-operator --wait 2>&1 | sed 's/^/  /' >> /Users/D043832/git/gardener-ai-conformance/v1.33/robust_controller/test_result.log || true
+  release "kuberay-operator" uninstalled
+ℹ️ Deleting namespace: robust-controller
+  namespace "robust-controller" deleted
+ℹ️ Deleting namespace: kuberay-operator
+  namespace "kuberay-operator" deleted
+✅ Cleanup completed

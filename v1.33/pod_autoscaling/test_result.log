@@ -1,0 +1,257 @@
+════════════════════════════════════════════════════════════════
+  Pod Autoscaling with Custom GPU Metrics
+════════════════════════════════════════════════════════════════
+
+Test Started: 2025-10-28 15:40:31 UTC
+Description: Verifies that HPA functions correctly for GPU workloads using custom metrics from DCGM
+Primary Namespace: pod-autoscaling
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Requirement Specification
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MUST: If the platform supports the HorizontalPodAutoscaler, it must function correctly for pods utilizing accelerators. This includes the ability to scale these Pods based on custom metrics relevant to AI/ML workloads. This is related to Accelerator Performance Metrics below.
+
+How we might test it: A custom metrics pipeline is configured to expose accelerator-related custom metrics to the HPA. Create a Deployment with each Pod requests an accelerator and exposes a custom metric. Create an HorizontalPodAutoscaler targeting the Deployment. Introduce load to the sample application, causing the average custom metric value to significantly exceed the target, triggering a scale up. Then remove the load to trigger a scale down.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Pre-Test Cleanup Check
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ No leftover resources found
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Checking Kubernetes Access
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ kubectl is available
+✅ Connected to Kubernetes cluster
+✅ helm is available
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 1: Create Test Namespace
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating namespace: pod-autoscaling
+✅ Namespace created: pod-autoscaling
+✅ Test namespace created
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 2: Verify Prerequisites
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Checking for GPU nodes (node.kubernetes.io/instance-type=g4dn.xlarge)...
+✅ Found 2 GPU node(s)
+ℹ️ Checking for DCGM exporter...
+✅ DCGM exporter is running
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 3: Create Monitoring Namespace
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating namespace: monitoring
+✅ Namespace created: monitoring
+✅ Monitoring namespace created
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 4: Deploy Prometheus Stack
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Adding prometheus-community Helm repository
+"prometheus-community" already exists with the same configuration, skipping
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "kuberay" chart repository
+...Successfully got an update from the "weaviate" chart repository
+...Successfully got an update from the "clastix" chart repository
+...Successfully got an update from the "traefik" chart repository
+...Successfully got an update from the "jetstack" chart repository
+...Successfully got an update from the "nvidia" chart repository
+...Successfully got an update from the "prometheus-community" chart repository
+...Successfully got an update from the "prometheus-adapter" chart repository
+...Successfully got an update from the "bitnami" chart repository
+Update Complete. ⎈Happy Helming!⎈
+ℹ️ Installing kube-prometheus-stack (this may take a few minutes)...
+ℹ️ Installing Helm chart: kube-prometheus-stack (prometheus-community/kube-prometheus-stack) in namespace monitoring
+  NAME: kube-prometheus-stack
+  LAST DEPLOYED: Tue Oct 28 16:40:42 2025
+  NAMESPACE: monitoring
+  STATUS: deployed
+  REVISION: 1
+  NOTES:
+  kube-prometheus-stack has been installed. Check its status by running:
+    kubectl --namespace monitoring get pods -l "release=kube-prometheus-stack"
+  
+  Get Grafana 'admin' user password by running:
+  
+    kubectl --namespace monitoring get secrets kube-prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d ; echo
+  
+  Access Grafana local instance:
+  
+    export POD_NAME=$(kubectl --namespace monitoring get pod -l "app.kubernetes.io/name=grafana,app.kubernetes.io/instance=kube-prometheus-stack" -oname)
+    kubectl --namespace monitoring port-forward $POD_NAME 3000
+  
+  Get your grafana admin user password by running:
+  
+    kubectl get secret --namespace monitoring -l app.kubernetes.io/component=admin-secret -o jsonpath="{.items[0].data.admin-password}" | base64 --decode ; echo
+  
+  
+  Visit https://github.com/prometheus-operator/kube-prometheus for instructions on how to create & configure Alertmanager and Prometheus instances using the Operator.
+✅ kube-prometheus-stack deployed successfully
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 5: Wait for Prometheus
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Waiting for pod (app.kubernetes.io/name=prometheus) in namespace monitoring to be ready (timeout: 180s)...
+  pod/prometheus-kube-prometheus-stack-prometheus-0 condition met
+✅ Pod is ready
+✅ Prometheus is ready
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 6: Configure DCGM Metrics Collection
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Applying ServiceMonitor for DCGM exporter
+servicemonitor.monitoring.coreos.com/nvidia-dcgm-exporter created
+✅ ServiceMonitor created - Prometheus will scrape DCGM metrics
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 7: Create Custom GPU Metric Recording Rules
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Applying PrometheusRule with pod_gpu_utilization recording rule
+prometheusrule.monitoring.coreos.com/gpu-custom-metrics created
+✅ PrometheusRule created successfully
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 8: Wait for Custom Metric Availability
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Waiting for pod_gpu_utilization metric to appear in Prometheus (may take some minutes)...
+ℹ️ Starting port-forward: svc/kube-prometheus-stack-prometheus 9090:9090 in namespace monitoring
+ℹ️ Waiting for metric (attempt 1/10)...
+✅ pod_gpu_utilization metric is available in Prometheus
+ℹ️ Stopping port-forward (PID: 16696)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 9: Deploy Prometheus-Adapter
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating prometheus-adapter configuration
+ℹ️ Installing prometheus-adapter
+ℹ️ Installing Helm chart: prometheus-adapter (prometheus-community/prometheus-adapter) in namespace monitoring
+  NAME: prometheus-adapter
+  LAST DEPLOYED: Tue Oct 28 16:42:49 2025
+  NAMESPACE: monitoring
+  STATUS: deployed
+  REVISION: 1
+  TEST SUITE: None
+  NOTES:
+  prometheus-adapter has been deployed.
+  In a few minutes you should be able to list metrics using the following command(s):
+  
+    kubectl get --raw /apis/custom.metrics.k8s.io/v1beta1
+✅ prometheus-adapter deployed successfully
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 10: Wait for Prometheus-Adapter
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Waiting for pod (app.kubernetes.io/name=prometheus-adapter) in namespace monitoring to be ready (timeout: 120s)...
+  pod/prometheus-adapter-77d6fc6fd7-m5zv5 condition met
+✅ Pod is ready
+✅ prometheus-adapter is ready
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 11: Verify Custom Metrics API
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Custom metrics API is available
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 12: Deploy GPU Workload with HPA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Deploying GPU workload and HorizontalPodAutoscaler
+deployment.apps/gpu-workload created
+horizontalpodautoscaler.autoscaling/gpu-workload-hpa created
+ℹ️ Waiting for GPU workload deployment to be available...
+ℹ️ Waiting for deployment gpu-workload in namespace pod-autoscaling to be available (timeout: 300s)...
+  deployment.apps/gpu-workload condition met
+✅ Deployment is available
+✅ GPU workload deployed - pod: gpu-workload-6d99f796db-wzcz6
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 13: Verify HPA Metric Access
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Checking if HPA can access pod_gpu_utilization metric (will retry for 5 minutes)...
+ℹ️ Checking metric accessibility (attempt 1/10)...
+ℹ️ Checking metric accessibility (attempt 2/10)...
+ℹ️ Checking metric accessibility (attempt 3/10)...
+ℹ️ Checking metric accessibility (attempt 4/10)...
+✅ HPA can access custom metric - current value: 0
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 14: Verify HPA Configuration
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ HPA is configured to use custom metric: pod_gpu_utilization
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 15: Monitor HPA Scale-Up Behavior
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ GPU workload is generating continuous load - monitoring HPA for scale-up (max 5 minutes)...
+ℹ️ Monitor iteration 1/10: Replicas=2, Desired=2, Pods=2, GPU Metric=26
+✅ HPA triggered scale-up! Desired replicas: 2, Pod count: 2
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 16: Stop GPU Load
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating stop signal in all GPU workload pods to halt GPU processing...
+ℹ️ Stopping load in pod: gpu-workload-6d99f796db-v9478
+ℹ️ Stopping load in pod: gpu-workload-6d99f796db-wzcz6
+✅ GPU load stopped in all pods
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 17: Monitor HPA Scale-Down Behavior
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Monitoring HPA for scale-down (max 5 minutes)...
+ℹ️ Note: HPA has a default scale-down stabilization window of 5 minutes
+ℹ️ Monitor iteration 1/15: Replicas=2, Desired=2, Running Pods=2, GPU Metric=0
+ℹ️ Monitor iteration 2/15: Replicas=1, Desired=1, Running Pods=2, GPU Metric=0
+✅ HPA triggered scale-down! Desired replicas: 1, Running pods: 2
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Summary:
+  ✅ Prometheus Stack deployed and operational
+  ✅ prometheus-adapter deployed and operational
+  ✅ Custom GPU metric (pod_gpu_utilization) created via PrometheusRule
+  ✅ Custom Metrics API accessible
+  ✅ GPU workload deployed with load control capability
+  ✅ HPA created with custom GPU metric
+  ✅ HPA accessing custom metric successfully
+  ✅ HPA scale-up triggered (1 → 2 replicas)
+  ✅ GPU load stopped successfully
+  ✅ HPA scale-down triggered (2 → 1 replica)
+
+CONFORMANCE REQUIREMENT MET:
+HPA successfully scaled a GPU workload based on custom GPU utilization
+metrics from DCGM. Scale-up (1→2 replicas) occurred when GPU utilization
+exceeded 10%, and scale-down (2→1 replica) occurred when load was removed,
+demonstrating complete HPA functionality for AI/ML workload autoscaling.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Result
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Pod autoscaling with custom GPU metrics validated successfully
+
+🎉 Test completed successfully!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Final Cleanup
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Test completed. Cleaning up...
+ℹ️ Executing: helm uninstall prometheus-adapter -n monitoring --wait 2>&1 | sed 's/^/  /' >> /Users/D043832/git/gardener-ai-conformance/v1.33/pod_autoscaling/test_result.log || true
+  release "prometheus-adapter" uninstalled
+ℹ️ Executing: helm uninstall kube-prometheus-stack -n monitoring --wait 2>&1 | sed 's/^/  /' >> /Users/D043832/git/gardener-ai-conformance/v1.33/pod_autoscaling/test_result.log || true
+  release "kube-prometheus-stack" uninstalled
+ℹ️ Executing: kubectl delete prometheusrule gpu-custom-metrics -n monitoring --ignore-not-found=true 2>&1 | sed 's/^/  /' >> /Users/D043832/git/gardener-ai-conformance/v1.33/pod_autoscaling/test_result.log || true
+  prometheusrule.monitoring.coreos.com "gpu-custom-metrics" deleted
+ℹ️ Executing: kubectl delete servicemonitor nvidia-dcgm-exporter -n gpu-operator --ignore-not-found=true 2>&1 | sed 's/^/  /' >> /Users/D043832/git/gardener-ai-conformance/v1.33/pod_autoscaling/test_result.log || true
+  servicemonitor.monitoring.coreos.com "nvidia-dcgm-exporter" deleted
+ℹ️ Deleting namespace: pod-autoscaling
+  namespace "pod-autoscaling" deleted
+ℹ️ Deleting namespace: monitoring
+  namespace "monitoring" deleted
+✅ Cleanup completed

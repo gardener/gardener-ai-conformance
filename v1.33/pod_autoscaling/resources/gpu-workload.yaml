@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpu-workload
+  labels:
+    app: gpu-workload
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpu-workload
+  template:
+    metadata:
+      labels:
+        app: gpu-workload
+    spec:
+      containers:
+      - name: cuda-vector-add
+        image: k8s.gcr.io/cuda-vector-add:v0.1
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Starting GPU workload with load control..."
+          # Check for stop signal every iteration
+          while true; do
+            if [ -f /tmp/stop-load ]; then
+              echo "Stop signal detected - entering idle mode"
+              while [ -f /tmp/stop-load ]; do
+                sleep 5
+              done
+              echo "Resuming GPU workload"
+            fi
+
+            # Run vectorAdd to generate GPU load
+            for i in {1..100}; do
+              ./vectorAdd >/dev/null 2>&1 &
+            done
+            wait
+            sleep 1
+          done
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: gpu-workload-hpa
+  namespace: pod-autoscaling
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: gpu-workload
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+  - type: Pods
+    pods:
+      metric:
+        name: pod_gpu_utilization
+      target:
+        type: AverageValue
+        averageValue: "10"

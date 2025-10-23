@@ -1,0 +1,172 @@
+════════════════════════════════════════════════════════════════
+  Cluster Autoscaling with GPU Accelerators
+════════════════════════════════════════════════════════════════
+
+Test Started: 2025-10-28 12:10:40 UTC
+Description: Validates that cluster autoscaler scales GPU node groups based on pending GPU workloads
+Primary Namespace: cluster-autoscaling
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Requirement Specification
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MUST: If the platform provides a cluster autoscaler or an equivalent mechanism, it must be able to scale up/down node groups containing specific accelerator types based on pending pods requesting those accelerators.
+
+How we might test it: Prepare a node pool with N nodes, configured with a specific accelerator type, with min node pool size of N and max size of at least N+1. Assuming 1 accelerator A per node N, Create (A*N)+1 Pods, each requesting one accelerator resource from that pool, verify that at least one Pod is unschedulable (Pending), and the cluster autoscaler will increase the node count to N+1, causing the Pod to be Running. Delete that Pod, then the cluster autoscaler will remove the idle accelerator node, returning the node count to N.
+
+Note: It is not allowed to "cheat" and require certain affinities. The cluster autoscaler **must** react on pods that **request** accelerators.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Pre-Test Cleanup Check
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ No leftover resources found
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Checking Kubernetes Access
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ kubectl is available
+✅ Connected to Kubernetes cluster
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 1: Verify GPU Infrastructure
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Checking for GPU nodes...
+✅ Found 1 GPU node(s) - first node: ip-10-180-14-93.eu-central-1.compute.internal
+ℹ️ Checking GPU device plugin...
+✅ NVIDIA GPU device plugin is running
+ℹ️ Initial GPU allocation: 0/1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 2: Create Test Namespace
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating namespace: cluster-autoscaling
+✅ Namespace created: cluster-autoscaling
+✅ Test namespace created
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 3: Record Initial Cluster State
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Initial GPU node count: 1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 4: Deploy GPU Workload Requiring Scale-Up
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating deployment with 2 pods requiring 1 GPU each (exceeds single node capacity)
+ℹ️ Important: No nodeAffinity used - autoscaler must react to GPU requests only
+deployment.apps/gpu-test-workload created
+✅ GPU workload deployment created (2 replicas × 1 GPU each)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 5: Wait for Initial Pod Scheduling
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Current pod state: 1 running, 1 pending
+✅ Expected pod distribution: 1 running (node capacity reached), 1 pending (needs additional node)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 6: Wait for Cluster Autoscaler Scale-Up
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Waiting for GPU node count to reach 2 (timeout: 900s)
+ℹ️ Current: 1, Expected: 2, Elapsed: 1s
+ℹ️ Current: 1, Expected: 2, Elapsed: 16s
+ℹ️ Current: 1, Expected: 2, Elapsed: 31s
+ℹ️ Current: 1, Expected: 2, Elapsed: 46s
+ℹ️ Current: 1, Expected: 2, Elapsed: 61s
+✅ GPU node count reached 2 after 76s
+✅ Cluster autoscaler successfully scaled up to 2 GPU nodes
+ℹ️ Post-scale GPU node count: 2
+ℹ️ Post-scale GPU allocation: 0/1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 7: Wait for GPU Device Plugin on All Nodes
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Waiting for GPU device plugin to initialize on all nodes...
+ℹ️ GPU nodes: 2, Device plugin pods running: 1
+ℹ️ GPU nodes: 2, Device plugin pods running: 1
+ℹ️ GPU nodes: 2, Device plugin pods running: 1
+ℹ️ GPU nodes: 2, Device plugin pods running: 1
+ℹ️ GPU nodes: 2, Device plugin pods running: 1
+ℹ️ GPU nodes: 2, Device plugin pods running: 1
+ℹ️ GPU nodes: 2, Device plugin pods running: 1
+ℹ️ GPU nodes: 2, Device plugin pods running: 1
+ℹ️ GPU nodes: 2, Device plugin pods running: 1
+ℹ️ GPU nodes: 2, Device plugin pods running: 1
+ℹ️ GPU nodes: 2, Device plugin pods running: 1
+ℹ️ GPU nodes: 2, Device plugin pods running: 1
+ℹ️ GPU nodes: 2, Device plugin pods running: 1
+ℹ️ GPU nodes: 2, Device plugin pods running: 2
+✅ GPU device plugin running on all GPU nodes
+ℹ️ Waiting for GPU resources to be advertised on new nodes...
+ℹ️ Nodes advertising GPU resources: 2
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 8: Verify All Pods Are Scheduled
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Current pod state: 2 running, 0 pending
+✅ All pods successfully scheduled on GPU nodes
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 9: Test Scale Down
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Deleting GPU workload to trigger scale down...
+deployment.apps "gpu-test-workload" deleted
+ℹ️ Remaining pods in namespace: 0
+ℹ️ Waiting for cluster autoscaler to scale down (may take up to 20 minutes)...
+ℹ️ Waiting for GPU node count to reach 1 (timeout: 1200s)
+ℹ️ Current: 2, Expected: 1, Elapsed: 0s
+ℹ️ Current: 2, Expected: 1, Elapsed: 15s
+ℹ️ Current: 2, Expected: 1, Elapsed: 31s
+ℹ️ Current: 2, Expected: 1, Elapsed: 46s
+ℹ️ Current: 2, Expected: 1, Elapsed: 61s
+ℹ️ Current: 2, Expected: 1, Elapsed: 76s
+ℹ️ Current: 2, Expected: 1, Elapsed: 91s
+ℹ️ Current: 2, Expected: 1, Elapsed: 106s
+ℹ️ Current: 2, Expected: 1, Elapsed: 122s
+ℹ️ Current: 2, Expected: 1, Elapsed: 137s
+ℹ️ Current: 2, Expected: 1, Elapsed: 152s
+ℹ️ Current: 2, Expected: 1, Elapsed: 167s
+ℹ️ Current: 2, Expected: 1, Elapsed: 182s
+ℹ️ Current: 2, Expected: 1, Elapsed: 197s
+✅ GPU node count reached 1 after 213s
+✅ Cluster autoscaler successfully scaled down to 1 GPU node
+ℹ️ Final GPU node count: 1
+ℹ️ Final GPU allocation: 0/1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Test Results:
+  Initial GPU Nodes: 1
+  Scale Up Target: 2 nodes
+  Post-Scale Nodes: 2
+  Final Running Pods: 2
+  Scale Down Target: 1 node
+  Final Nodes: 1
+
+CONFORMANCE STATUS: ✅ PASSED
+
+The cluster autoscaler successfully:
+  ✅ Scaled up GPU nodes when workloads exceeded capacity
+  ✅ Pending pods requesting GPUs triggered scale-up correctly
+  ✅ All GPU pods were scheduled after scale-up completed
+  ✅ Scaled down GPU nodes when workloads were removed
+
+The platform meets the cluster autoscaling requirement for GPU accelerator workloads.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Result
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Cluster autoscaler correctly scaled GPU nodes based on pending GPU workloads
+
+🎉 Test completed successfully!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Final Cleanup
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Test completed. Cleaning up...
+ℹ️ Deleting namespace: cluster-autoscaling
+  namespace "cluster-autoscaling" deleted
+✅ Cleanup completed

@@ -1,0 +1,162 @@
+Gardener is an open-source Kubernetes management system for automating the creation, operation, and lifecycle management of Kubernetes clusters as a service. It is not a managed Kubernetes offering like EKS or GKE, nor a full application platform like OpenShift, nor is it kubeadm-based. Instead, Gardener is a system you deploy and run to provide such services, building and managing Kubernetes clusters using Kubernetes-native components and paradigms.
+
+Core Architecture and Concepts:
+
+Gardener operates through a layered architecture:
+
+1.  Runtime Cluster: An external Kubernetes cluster where the gardener-operator is deployed. This operator manages the deployment of Gardeners core control plane components: gardener-apiserver, gardener-scheduler, and gardener-controller-manager. These components form the control plane of Gardener. Gardener then deploys and manages a node-less, worker-less virtual cluster into the runtime cluster, consisting of virtual-garden-kube-apiserver and virtual-garden-kube-controller-manager. This virtual garden cluster, whose control plane runs in the runtime cluster, serves as Gardeners data plane and user interface.
+
+2.  Garden Cluster (Virtual): This is the central management interface for users. Its API is extended by the gardener-apiserver (running in the Runtime Cluster) with Gardener-specific custom resources (e.g., Shoot, Seed, CloudProfile). Users interact with the Garden cluster to request and manage their Kubernetes clusters (Shoot clusters).
+
+3.  Seed Clusters: These are Kubernetes clusters that host the control planes of end-user Kubernetes clusters (Shoot clusters). Each Seed cluster runs a gardenlet, an agent that acts on Gardener resources and manages the lifecycle of Shoot control planes scheduled onto it. Seed clusters can be existing Kubernetes clusters or provisioned and managed by Gardener itself (Managed Seeds). They function like worker nodes for the Garden cluster, providing the infrastructure to run Shoot control planes.
+
+4.  Shoot Clusters: These are the end-user Kubernetes clusters provisioned by Gardener. They consist only of worker nodes. The control plane components (API server, scheduler, controller manager, etcd) for each Shoot cluster run as isolated, dedicated pods within a designated Seed cluster. This kubeception or inception design reduces total cost of ownership and simplifies Day-2 operations by leveraging Kubernetes own capabilities for managing these control plane components.
+
+Key Principles:
+-   Kubernetes-Native: Gardener uses Kubernetes custom resources, controllers, and the operator pattern for all its operations. Its main principle is to leverage Kubernetes concepts for all of its tasks.
+-   Homogeneity: Gardener ensures that all Shoot clusters, regardless of the underlying infrastructure provider, have a consistent bill of materials, configuration, and operational behavior. This is a key differentiator from solutions like SIG Cluster Lifecycles Cluster API (CAPI), which harmonizes how to get to clusters but allows providers to define the cluster make-up, leading to heterogeneity. Gardeners API harmonizes the make-up of the clusters themselves. Gardener is certified for Kubernetes versions up to v1.32.
+-   Extensibility: Gardener features a robust extension mechanism allowing integration with various cloud providers (e.g., AWS, Azure, GCP, OpenStack, Alicloud) and services (e.g., networking, DNS, certificate management).
+-   Declarative Management: Shoot clusters are defined and managed via declarative YAML specifications (the Shoot custom resource).
+
+Gardener Components (End-User Perspective):
+
+-   gardener-operator: Manages the Gardener installation itself, including its control plane and the virtual Garden cluster. It reconciles Garden custom resources (defining the Gardener setup) and Extension resources (for installing Gardener extensions). From an end-user perspective, its operation ensures the availability and proper functioning of the Garden cluster they interact with.
+-   gardener-apiserver: Extends the virtual Garden clusters Kubernetes API with Gardener-specific resources like Shoot, Seed, CloudProfile, Project, InternalSecret, (Cluster)OpenIDConnectPreset. This is the API end-users interact with to define and manage their clusters. It handles validation and admission for these resources.
+-   gardener-controller-manager (GCM): Manages Gardener resources at the Garden cluster level. For end-users, this means it handles Project lifecycle (namespaces, RBAC), Shoot maintenance (hibernation, quota checks, retries, status updates), and ensures that referenced resources like CloudProfiles and CredentialsBindings are not deleted while in use.
+-   gardener-scheduler: Assigns newly created Shoot resources to an appropriate Seed cluster. This decision is based on strategies like SameRegion or MinimalDistance, Shoot-defined taints/tolerations, Seed capacity, network configuration, and selectors.
+-   gardenlet: An agent in each Seed cluster. It is responsible for the lifecycle of Shoot control planes scheduled on its Seed. This includes provisioning infrastructure, deploying the Shoots control plane components (etcd, kube-apiserver, etc.) as pods into the Seed, managing worker nodes in the Shoot, and handling operations like updates, hibernation, and deletion. It also manages BackupBuckets and BackupEntrys for etcd backups.
+-   gardener-admission-controller: Implements admission webhooks for standard Kubernetes resources (like Secrets, Namespaces) and Gardener-specific resources, ensuring consistency and enforcing policies relevant to Gardener operations. For users, this means validation of Kubeconfig secrets, resource sizes, and authentication/authorization configurations in Shoots.
+-   gardener-resource-manager (GRM): Deployed in Seed clusters and Shoot control planes. It manages Kubernetes resources (like system components, network policies) in target clusters using ManagedResource custom resources. It also handles health checks for these resources and provides services like CSR approval for kubelet certificates and gardener-node-agent client certificates.
+-   gardener-node-agent: Runs on every worker node in a Shoot cluster. It bootstraps the machine, manages the kubelet service, and applies operating system configurations defined via OperatingSystemConfig resources.
+-   etcd-druid: Manages the lifecycle of etcd clusters, which store the state for Shoot API servers (and the Garden cluster API server).
+-   etcd-backup-restore: A sidecar to etcd pods, performing regular backups of etcd data to an object store and handling restoration.
+
+Gardener Resource Abstractions (API Objects for End-Users):
+
+-   Project (core.gardener.cloud/v1beta1): A top-level construct for isolation and collaboration. Users create Shoots within Projects. It defines members and their roles (e.g., admin, viewer, owner, uam for user access management, serviceaccountmanager for service account management, and extension-specific roles). Each Project is backed by a Kubernetes Namespace in the Garden cluster. Supports toleration defaults/whitelist for Seeds and an optional four-eyes principle for resource deletion.
+-   CloudProfile (core.gardener.cloud/v1beta1): Defines provider-specific environmental details. End-users primarily read these to understand available options. It specifies:
+    *   Machine Types: Available instance types with CPU, GPU, memory, storage details, architecture (amd64, arm64), and capabilities.
+    *   Kubernetes Versions: Allowed K8s versions with classifications (preview, supported, deprecated) and optional expiration dates.
+    *   Machine Images: OS images with versions, supported CRI (e.g., containerd), architectures, kubelet version constraints, in-place update support, capabilities, and an update strategy (patch, minor, major).
+    *   Regions: Available cloud provider regions, their zones, and optional access restrictions.
+    *   Volume Types: Allowed storage volume types.
+    *   Bastion Configuration: Default machine image and type for bastion hosts.
+    *   Operational Limits: e.g., maxNodesTotal for Shoots.
+-   NamespacedCloudProfile (core.gardener.cloud/v1beta1): Allows project administrators to customize a parent CloudProfile with project-specific overrides (e.g., machine image expiration, Kubernetes versions). Modification of certain fields requires special RBAC permissions.
+-   SecretBinding (core.gardener.cloud/v1beta1) / CredentialsBinding (security.gardener.cloud/v1alpha1): Links a Shoot to a Secret (containing cloud provider credentials) or a WorkloadIdentity (for federated authentication) to authorize Gardener to act on the users cloud account.
+-   Quota (core.gardener.cloud/v1beta1): Defines resource consumption limits (e.g., number of Shoots, total CPU/memory) for Shoots within a Project or for a specific SecretBinding/CredentialsBinding.
+-   Shoot (core.gardener.cloud/v1beta1): The central resource defining an end-user Kubernetes cluster.
+    *   Spec: Contains the desired state of the cluster:
+        *   Kubernetes Version: For the control plane and optionally per worker pool.
+        *   Provider Block: Cloud provider type and provider-specific configurations for controlPlaneConfig, infrastructureConfig, and workers (defining machine type, image, min/max count, zones, volume, CRI, etc.), and workersSettings (e.g., SSH access).
+        *   Networking: CNI plugin type (e.g., calico, cilium) and its providerConfig, pod/service/node CIDRs, and IP families (IPv4, IPv6, dual-stack).
+        *   Addons: Configuration for managed addons like kubernetes-dashboard and nginx-ingress.
+        *   Maintenance: Defines a time window for automated maintenance operations and auto-update policies for Kubernetes patch versions and machine image versions.
+        *   Hibernation: Configuration for automatic or manual cluster hibernation to save costs.
+        *   DNS: Configuration for cluster DNS, including domain and providers.
+        *   Extensions: List of enabled extensions and their provider-specific configurations.
+        *   Tolerations: For taints on Seed clusters, influencing scheduling.
+        *   ExposureClassName: Optional reference to an ExposureClass for control plane endpoint strategy.
+        *   SystemComponents: Configuration for components like CoreDNS and NodeLocalDNS.
+        *   ControlPlane: Settings for high availability.
+        *   SchedulerName: Optional custom scheduler for the Shoot.
+        *   CloudProfile Reference: Points to a CloudProfile or NamespacedCloudProfile.
+        *   SecretBindingName / CredentialsBindingName: Reference to provider credentials.
+        *   AccessRestrictions: List of access restrictions (e.g., eu-access-only).
+    *   Status: Reflects the observed state, including various health conditions (APIServerAvailable, ControlPlaneHealthy, EveryNodeReady, ObservabilityComponentsHealthy, SystemComponentsHealthy), operational constraints (HibernationPossible, MaintenancePreconditionsSatisfied, CACertificateValiditiesAcceptable, etc.), last operation details, error codes, hibernation status, technical ID, cluster identity, advertised API server addresses, and credentials rotation status.
+-   Seed (core.gardener.cloud/v1beta1): While primarily an operator concern, its configuration (provider type, region, zones, taints, capacity) influences Shoot scheduling and available features. Users might inspect Seed status for troubleshooting or capacity planning.
+
+Shoot Cluster Lifecycle Management:
+
+-   Creation: A user defines a Shoot resource in their Project. The gardener-scheduler assigns it to a suitable Seed cluster. The gardenlet on that Seed then provisions the necessary cloud infrastructure (using a provider-specific extension controller) and deploys the Shoots control plane components (etcd, API server, etc.) as pods into a dedicated namespace within the Seed. Worker nodes are subsequently created in the users cloud account.
+-   Updates & Upgrades:
+    *   Gardener Updates: When Gardener itself is updated, changes to system components or configurations are rolled out to Shoots during their next reconciliation.
+    *   Shoot Upgrades: Users can upgrade the Kubernetes version of their Shoots (control plane and, optionally, per worker pool) or the machine image version of worker pools. Kubernetes patch version updates are typically in-place (restarting kubelet). Kubernetes minor version upgrades trigger a rolling update of worker nodes (draining and replacing them one by one, respecting PDBs). Worker pool K8s versions can be up to two minor versions behind the control plane version.
+-   Maintenance: Shoots have a configurable maintenance time window (spec.maintenance.timeWindow). During this period, Gardener performs operations like automatic Kubernetes patch version updates and machine image updates. The eligibility for updates is determined by version classifications (preview, supported, deprecated, expired) in the CloudProfile and the machine image update strategy (patch, minor, major). Expired versions are forcefully updated. Infrastructure resources (like networks) and DNS records are also reconciled. Some control plane components or core addons might be restarted as a precautionary measure. Users can confine their own Shoot spec updates to this window via spec.maintenance.confineSpecUpdateRollout.
+-   Hibernation: Shoots can be hibernated (manually via spec.hibernation.enabled or by defining spec.hibernation.schedules) to reduce costs. This scales down all worker nodes and most control plane components. Persistent data (etcd state, PVCs) is preserved.
+-   Deletion: When a Shoot is deleted, Gardener orchestrates the removal of all associated resources. This includes a multi-step cleanup of Kubernetes resources within the Shoot cluster (webhooks, APIServices, CRDs, workloads, PVCs, VolumeSnapshots) before the underlying cloud infrastructure is de-provisioned. A ShootForceDeletion annotation can be used for problematic deletions, but this requires manual cleanup of cloud resources by the user.
+-   Backup and Restore: The etcd-backup-restore component automatically takes backups of each Shoots etcd (both main and events stores). Full snapshots are typically taken daily, and delta snapshots more frequently (e.g., every 5 minutes or after 100MiB of changes). Backups are stored in a provider-specific object store (e.g., S3, GCS, ABS) configured via BackupBucket and BackupEntry resources. Restoration from the latest backup is automated in case of disaster. Point-in-time recovery for etcd is not directly supported for end-users. The backup retention policy is exponential, keeping more recent backups for longer.
+-   Credentials Rotation: Gardener supports rotation for various credentials:
+    *   User-Provided Cloud Provider Keys: Users are responsible for rotating these in their cloud accounts and updating the corresponding Secret in Gardener. Shoots must be reconciled before old credentials are invalidated.
+    *   Gardener-Generated Credentials: Includes CAs, observability passwords (Plutono), SSH keypair for worker nodes, ETCD encryption key, and ServiceAccount token signing key. These are rotated by users via annotations on the Shoot resource (e.g., gardener.cloud/operation=rotate-credentials-start, gardener.cloud/operation=rotate-ca-start). Rotation often involves multiple phases (prepare, complete) and may trigger rolling updates of worker nodes or control plane components.
+-   Accessing Shoots:
+    *   The shoots/adminkubeconfig and shoots/viewerkubeconfig subresources on the Shoot resource provide temporary, role-based kubeconfigs. These use short-lived client certificates that are dynamically generated.
+    *   Shoots can be configured with OIDC (deprecated for K8s >= 1.32) or Structured Authentication/Authorization for their kube-apiserver via fields in the Shoot spec.
+
+Networking Features:
+
+-   CNI Plugins: Gardener supports various CNI plugins through its extension mechanism (e.g., Calico, Cilium). Users select the CNI type in the Shoot spec and can provide CNI-specific configuration via networking.providerConfig.
+    *   Calico: Can be configured with Typha for scalability, an eBPF dataplane for performance, and different overlay modes (IPIP, VXLAN) or a non-overlay setup. Autoscaling for Calico components can be set to VPA, static, or cluster-proportional.
+    *   Cilium: Supports Hubble for network observability, various tunnel modes (VXLAN, Geneve, disabled), and can be configured for CNI chaining (cni.exclusive=false). It also offers features like egress gateways and SNAT to upstream DNS servers.
+-   IP Addressing: Shoots require distinct CIDR ranges for pods, services, and nodes, configurable in the Shoot spec. Gardener supports IPv4 single-stack, IPv6 single-stack, and dual-stack (IPv4/IPv6) networking for Shoots, including migration paths between these modes. There are reserved network ranges for seed-shoot communication. Overlapping IPv4 networks between a Seed and its Shoots are possible under specific conditions (non-HA VPN, IPv4 or dual-stack IPv4/IPv6 shoot).
+-   DNS:
+    *   CoreDNS: Deployed in Shoot clusters for in-cluster DNS resolution. Its autoscaling can be configured (horizontal or cluster-proportional). Users can provide custom CoreDNS configurations via a coredns-custom ConfigMap in the kube-system namespace of the Shoot.
+    *   NodeLocalDNS: Can be enabled in the Shoot spec (systemComponents.nodeLocalDNS.enabled) to run a DNS caching agent on each worker node, reducing load on CoreDNS and improving DNS latency.
+    *   External DNS: The shoot-dns-service extension allows Gardener to manage DNS records for Shoot ingresses and services in external DNS providers (like AWS Route53, Google Cloud DNS, Azure DNS). DNS providers are configured in the Shoot spec or as DNSProvider resources within the Shoot cluster.
+    *   DNS Search Path Optimization: CoreDNS can be configured with commonSuffixes (via systemComponents.coreDNS.rewriting.commonSuffixes) to rewrite DNS queries that are malformed due to excessive search path application, optimizing resolution for external domains.
+-   Control Plane Exposure: The API server for a Shoot, which runs in a Seed cluster, is exposed externally via an Istio ingress gateway in that Seed. Client access (e.g., kubectl) typically uses TLS SNI on TCP port 443 to reach the correct API server. For in-cluster communication from Shoot worker nodes to their API server, an apiserver-proxy DaemonSet on the worker nodes forwards traffic, often using HAProxy Proxy Protocol on TCP port 8443 to the Istio ingress.
+-   Reversed VPN Tunnel: To allow the Shoot API server (in the Seed) to communicate with pods and nodes within the Shoot cluster (e.g., for kubectl exec/logs, metrics scraping), a VPN connection is established. This tunnel is initiated from the Shoot cluster to its control plane namespace in the Seed cluster, typically over TCP port 8132 to the Istio ingress gateway.
+-   Network Filtering: The shoot-networking-filter extension can be enabled to block egress traffic from Shoot worker nodes to specified IP ranges (e.g., known malicious IPs, internal corporate networks). Ingress traffic filtering can also be enabled via a blackholing mechanism, which requires source IP preservation by the load balancer. Configuration can be per-shoot and, for ingress blackholing, per-worker group.
+-   KUBERNETES_SERVICE_HOST Injection: A mutating webhook running in the Seed cluster (part of gardener-resource-manager) injects the KUBERNETES_SERVICE_HOST environment variable into pods created in the Shoot. This variable points directly to the FQDN of the Shoot API server, allowing pods to bypass the apiserver-proxy hop for more direct communication. Users can opt-out of this injection per-pod or per-namespace using labels.
+
+Security Features:
+
+-   ETCD Encryption: Sensitive Kubernetes resources stored in etcd (Secrets are encrypted by default; other resources like ConfigMaps can be added via Shoot.spec.kubernetes.kubeAPIServer.encryptionConfig.resources) are encrypted at rest. The encryption keys are managed by Gardener and can be rotated by the user.
+-   Pod Security Admission: Shoots can be configured with the PodSecurity admission plugin (via Shoot.spec.kubernetes.kubeAPIServer.admissionPlugins). This allows enforcement of Pod Security Standards (e.g., baseline, restricted) at the namespace level. The kube-system namespace is always exempted by Gardener to ensure system components function correctly.
+-   Seccomp Profiles: Gardener supports setting RuntimeDefault as the default seccomp profile for workloads. This can be enabled for components running in Seed clusters (via a Gardenlet feature gate) and for workloads in Shoot clusters by setting Shoot.spec.kubernetes.kubelet.seccompDefault=true.
+-   Audit Logging: Users can define custom audit policies for their Shoot API servers. The policy is provided as a ConfigMap in the Project namespace and referenced in Shoot.spec.kubernetes.kubeAPIServer.auditConfig.auditPolicy.configMapRef.
+-   Image Signature Verification: The shoot-lakom-service extension integrates with cosign to verify container image signatures. By default, it verifies Gardener-managed components in the kube-system namespace of a Shoot. Users can extend this to their own workloads by providing custom public keys via a Secret referenced in the Shoot spec. Lakom can validate Pods and certain Gardener-specific CRDs like ControllerDeployments.
+-   Access Restrictions: CloudProfile, Seed, and Shoot resources support an accessRestrictions field (e.g., {name: eu-access-only}). This allows operators to define policies that can influence Shoot scheduling (e.g., only schedule on Seeds that also declare eu-access-only) and guide operational practices. Enforcement of these restrictions is typically an operational responsibility beyond Gardeners technical controls.
+-   SSH Access to Worker Nodes: SSH access to Shoot worker nodes can be enabled or disabled via Shoot.spec.provider.workersSettings.sshAccess.enabled (default is true). When enabled, Gardener manages an SSH keypair. Access is typically facilitated by creating temporary bastion hosts using the Bastion (operations.gardener.cloud/v1alpha1) resource, rather than direct SSH access.
+-   ServiceAccount Token Configuration: Users can configure aspects of ServiceAccount token issuance for Shoots, such as the issuer URL and maximum token expiration, via Shoot.spec.kubernetes.kubeAPIServer.serviceAccountConfig. Gardener also supports a managed service account issuer through the Gardener Discovery Server, enabled by annotating the Shoot with authentication.gardener.cloud/issuer=managed.
+
+Extensibility (User-Facing Aspects):
+
+Gardener's extensibility allows users to leverage a wide range of cloud provider services and features in a consistent manner.
+-   Provider Extensions: Define how Shoots interact with specific cloud environments (AWS, Azure, GCP, etc.). Users specify the provider type in the Shoot spec and provide provider-specific configurations for infrastructure (e.g., VPC settings, subnets), control plane components, and worker pools (e.g., instance types, volumes).
+-   Networking Extensions: Provide CNI solutions. Users select the CNI type (e.g., calico, cilium) and can provide specific configurations.
+-   Other Extensions:
+    *   shoot-dns-service: Manages DNS records for Ingresses and Services.
+    *   shoot-cert-service: Manages TLS certificates for Ingresses and Services, often using Let's Encrypt.
+    *   registry-cache: Deploys a pull-through image cache within the Shoot.
+    *   registry-mirror: Configures containerd on worker nodes to use specified image mirrors.
+    *   shoot-networking-filter: Blocks network traffic to/from specified IP ranges.
+    *   shoot-lakom-service: Verifies container image signatures.
+    Users enable these extensions in the Shoot.spec.extensions array and provide necessary providerConfig.
+
+Specialized Use Cases:
+
+-   Workerless Shoots: Users can create Shoots without any worker nodes. These provide only a Kubernetes control plane (API server, etcd, etc.) and are useful for scenarios where only the Kubernetes API is needed without running workloads directly in that cluster.
+-   Autonomous Shoot Clusters (gardenadm): An experimental CLI tool, gardenadm, allows bootstrapping of "Autonomous Shoot Clusters". In these clusters, the control plane components run as static pods on a dedicated control plane worker pool within the cluster itself, rather than in a Seed. These can be used to host a Gardener installation or serve as initial Seed clusters. After creation, they are typically connected to a Gardener system for Day-2 operations.
+
+Configuration and Metadata for Users:
+
+-   gardener-info ConfigMap: Located in the gardener-system-public namespace in the Garden cluster. It is readable by all authenticated users and provides landscape-wide information, such as the gardener-apiserver version and the workload identity issuer URL.
+-   shoot-info ConfigMap: Located in the kube-system namespace of each Shoot cluster. It contains Shoot-specific metadata like its domain, Kubernetes version, cloud provider, region, and network CIDRs.
+-   Containerd Configuration: For Shoots using containerd, users can customize its configuration by providing .toml files in /etc/containerd/conf.d/ on worker nodes (via OperatingSystemConfig, typically managed by extensions). The registry-cache and registry-mirror extensions also interact with containerd configuration.
+-   Custom CSI Components: If users deploy their own CSI components into a Shoot, they should label them with shoot.gardener.cloud/no-cleanup=true to prevent Gardener from attempting to delete them during Shoot deletion, which could lead to orphaned resources or deletion hangs.
+-   Seed Taints and Shoot Tolerations: Seeds can have taints (defined in Seed.spec.taints), and Shoots can specify tolerations (in Shoot.spec.tolerations) to control which Shoots can be scheduled on which Seeds. Projects can also define default tolerations and a whitelist of allowed tolerations for Shoots created within them.
+-   Shoot Limits: The CloudProfile defines operational limits for Shoots, such as CloudProfile.spec.limits.maxNodesTotal, which configures the maximum number of worker nodes a Shoot cluster can have.
+-   CPU Architectures: Shoots support amd64 (default) and arm64 CPU architectures for worker pools. This is configured in Shoot.spec.provider.workers[].machine.architecture and must be supported by the chosen machine type and image in the CloudProfile.
+-   Node Readiness Taints: Gardener uses a specific taint (node.gardener.cloud/critical-components-not-ready) on newly created worker nodes. This taint is removed by the gardener-resource-manager's Node controller only after all critical system components (like CNI and CSI node plugins) are ready on that node, ensuring workloads are not scheduled prematurely.
+-   Shoot Scheduling Profiles: Users can influence how pods are scheduled within their Shoot cluster by selecting a profile (balanced (default) or bin-packing) in Shoot.spec.kubernetes.kubeScheduler.profile.
+
+Provider-Specific User Configurations (Examples in Shoot Spec):
+Gardener's extensibility means that provider-specific configurations are encapsulated within the provider extension's API types and included in the Shoot spec.
+-   Alicloud: Users configure VPC settings (new or existing), zones, worker CIDRs, and optionally NAT gateway EIPs in InfrastructureConfig. ControlPlaneConfig allows enabling CSI AD controller. WorkerConfig can specify volume encryption.
+-   AWS: InfrastructureConfig includes ECR access, dual-stack enablement, VPC settings, zones with internal/public/worker CIDRs, optional EIPs for NAT gateways, and tag ignoring rules. ControlPlaneConfig allows enabling a custom route controller or the AWS Load Balancer Controller. WorkerConfig allows specifying volume IOPS/throughput, data volume snapshot IDs, IAM instance profiles, instance metadata options, CPU options, and node capacity templates. Annotations on the Shoot can control features like EBS CSI volume attach limits, legacy XFS mode, VolumeAttributesClasses support, and use of the "flow" infrastructure reconciler.
+-   Azure: InfrastructureConfig defines VNet settings (new or existing), worker/zone CIDRs, NAT gateway options, service endpoints, and optional user-assigned managed identity. ControlPlaneConfig manages cloud controller manager features and default storage/snapshot classes. WorkerConfig can specify node capacity templates, boot diagnostics, and data volume image references. Annotations control egress LB skipping, VolumeAttributesClasses, and migration to VMSS Flex.
+-   GCP: InfrastructureConfig sets VPC (new or existing with cloud router), worker/internal CIDRs, Cloud NAT options (ports per VM, IP names, endpoint mapping, timeouts), and flow log settings. ControlPlaneConfig specifies the main zone and default storage/snapshot classes. WorkerConfig allows setting volume interface (NVMe/SCSI), CMEK encryption keys, data volume source images, service accounts with scopes, GPU types/counts, and node capacity templates. Annotations enable VolumeAttributesClasses.
+-   OpenStack: InfrastructureConfig defines the floating IP pool, optional subnet, network/router reuse, and worker CIDR. ControlPlaneConfig sets the load balancer provider and classes. WorkerConfig can define server group policies, machine labels, and node capacity templates.
+
+Networking Extension User Configurations (Examples in Shoot.spec.networking.providerConfig):
+-   Calico: NetworkConfig allows setting IPAM type, vethMTU, enabling/disabling Typha, overlay networking (IPIP/VXLAN or disabled), eBPF dataplane, and autoscaling mode for Calico components.
+-   Cilium: NetworkConfig allows enabling Hubble, debug mode, tunnel mode (VXLAN, Geneve, disabled), BPF socket LB options, CNI chaining, egress gateways, and SNAT to upstream DNS.
+
+Other Common Extension User Configurations (Examples in Shoot.spec.extensions[].providerConfig):
+-   shoot-cert-service: CertConfig defines issuers and alerting thresholds. Users request certificates via annotations on Ingress/Service resources or by creating Certificate CRs, specifying common name, DNS names, issuer, etc.
+-   shoot-dns-service: DNSConfig can enable DNSProvider replication. Users request DNS records via annotations on Ingress/Service resources or by creating DNSEntry CRs, specifying DNS names and TTL.
+-   shoot-lakom-service: LakomConfig defines the validation scope (e.g., KubeSystem, Cluster) and can reference a Secret (via Shoot.spec.resources) containing custom public keys for image signature verification.
+-   shoot-networking-filter: EgressFilterConfig enables egress filtering, blackholing for ingress, and lists of static IPs/networks to block.
+-   registry-cache: RegistryConfig defines caches for specific upstream registries, including volume size/storageClass, garbage collection TTL, credentials for private upstreams, proxy settings, and HA options.
+-   registry-mirror: MirrorConfig defines mirrors for upstream registries, specifying host URLs and capabilities (pull, resolve).
