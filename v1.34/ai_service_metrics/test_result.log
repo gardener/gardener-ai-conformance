@@ -1,0 +1,133 @@
+════════════════════════════════════════════════════════════════
+  AI Service Metrics Collection
+════════════════════════════════════════════════════════════════
+
+Test Started: 2026-01-24 12:36:06 UTC
+Description: Validates that the platform provides monitoring capable of collecting metrics from AI workloads in Prometheus format
+Primary Namespace: ai-service-metrics
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Requirement Specification
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MUST: Provide a monitoring system capable of discovering and collecting metrics from workloads that expose them in a standard format (e.g. Prometheus exposition format). This ensures easy integration for collecting key metrics from common AI frameworks and servers.
+
+How we might test it: Because all these common metrics are exposed in the Prometheus format, the test verifies the platform’s monitoring system can collect Prometheus metrics. First deploy an AI application using a common framework, configure metrics collection for this application, generate sample traffic to the application, then queries the platform's monitoring system and verifies that key metrics from the AI application have been collected.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Pre-Test Cleanup Check
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ No leftover resources found
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Checking Kubernetes Access
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ kubectl is available
+✅ Connected to Kubernetes cluster
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Setup: Create Test Namespace
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating namespace: ai-service-metrics
+✅ Namespace created: ai-service-metrics
+✅ Test namespace created
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 1: Deploy AI Application with Prometheus Metrics
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Deploying podinfo as sample AI application (exposes Prometheus metrics)
+deployment.apps/ai-metrics-app created
+service/ai-metrics-app created
+✅ AI application deployed
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 2: Wait for Application Ready
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Waiting for pod (app=ai-metrics-app) in namespace ai-service-metrics to be ready (timeout: 180s)...
+  pod/ai-metrics-app-7dc4fc8667-5v9zb condition met
+✅ Pod is ready
+✅ AI application pod is ready
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 3: Deploy Prometheus Monitoring System
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Note: Deploying monitoring stack as platform requirement validation
+serviceaccount/prometheus created
+clusterrole.rbac.authorization.k8s.io/prometheus-ai-metrics created
+clusterrolebinding.rbac.authorization.k8s.io/prometheus-ai-metrics created
+configmap/prometheus-config created
+deployment.apps/prometheus created
+service/prometheus created
+✅ Prometheus monitoring system deployed
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 4: Wait for Prometheus Ready
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Waiting for pod (app=prometheus) in namespace ai-service-metrics to be ready (timeout: 180s)...
+  pod/prometheus-7856b9d469-shwp7 condition met
+✅ Pod is ready
+✅ Prometheus pod is ready
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 5: Generate Application Traffic
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Generating traffic to create metrics...
+ℹ️ Starting port-forward: service/ai-metrics-app 9898:9898 in namespace ai-service-metrics
+ℹ️ Stopping port-forward (PID: 99117)
+✅ Traffic generated successfully
+ℹ️ Waiting for Prometheus to scrape metrics (30 seconds)...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 6: Verify Metrics Collection in Prometheus
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Starting port-forward: service/prometheus 9090:9090 in namespace ai-service-metrics
+ℹ️ Checking Prometheus targets...
+{"status":"success","data":{"activeTargets":[{"discoveredLabels":{"__address__":"100.64.1.29:9898","__meta_kubernetes_namespace":"ai-service-metrics","__meta_kubernetes_pod_annotation_cni_projectcalico_org_containerID":"986b8993739ec4e6c76edf4482d226861918d6377e2b7c2ea05c09ce5ec04f36","__meta_kubernetes_pod_annotation_cni_projectcalico_org_podIP":"100.64.1.29/32","__meta_kubernetes_pod_annotation_cni_projectcalico_org_podIPs":"100.64.1.29/32","__meta_kubernetes_pod_annotation_prometheus_io_path":"/metrics","__meta_kubernetes_pod_annotation_prometheus_io_port":"9898","__meta_kubernetes_pod_annotation_prometheus_io_scrape":"true","__meta_kubernetes_pod_annotationpresent_cni_projectcalico_org_containerID":"true","__meta_kubernetes_pod_annotationpresent_cni_projectcalico_org_podIP":"true","__meta_kubernetes_pod_annotationpresent_cni_projectcalico_org_podIPs":"true","__meta_kubernetes_pod_annotationpresent_prometheus_io_path":"true","__meta_kubernetes_pod_annotationpresent_prometheus_io_port":"true","__meta_kubernetes_pod_annotationpresent_prometheus_io_scrape":"true","__meta_kubernetes_pod_container_id":"containerd://7f6dfba44a1180675419bf106d2266b990fece62a05b33fe3f7819274a010c6f","__meta_kubernetes_pod_container_image":"stefanprodan/podinfo:6.0.0","__meta_kubernetes_pod_container_init":"false","__meta_kubernetes_pod_container_name":"podinfo","__meta_kubernetes_pod_container_port_name":"http","__meta_kubernetes_pod_container_port_number":"9898","__meta_kubernetes_pod_container_port_protocol":"TCP","__meta_kubernetes_pod_controller_kind":"ReplicaSet","__meta_kubernetes_pod_controller_name":"ai-metrics-app-7dc4fc8667","__meta_kubernetes_pod_host_ip":"10.180.3.162","__meta_kubernetes_pod_ip":"100.64.1.29","__meta_kubernetes_pod_label_app":"ai-metrics-app","__meta_kubernetes_pod_label_pod_template_hash":"7dc4fc8667","__meta_kubernetes_pod_labelpresent_app":"true","__meta_kubernetes_pod_labelpresent_pod_template_hash":"true","__meta_kubernetes_pod_name":"ai-metrics-app-7dc4fc8667-5v9zb","__meta_kubernetes_pod_node_name":"ip-10-180-3-162.eu-central-1.compute.internal","__meta_kubernetes_pod_phase":"Running","__meta_kubernetes_pod_ready":"true","__meta_kubernetes_pod_uid":"10af1a35-68a0-4694-ac98-8b90f8626548","__metrics_path__":"/metrics","__scheme__":"http","__scrape_interval__":"15s","__scrape_timeout__":"10s","job":"ai-metrics-app"},"labels":{"app":"ai-metrics-app","instance":"100.64.1.29:9898","job":"ai-metrics-app","kubernetes_namespace":"ai-service-metrics","kubernetes_pod_name":"ai-metrics-app-7dc4fc8667-5v9zb","pod_template_hash":"7dc4fc8667"},"scrapePool":"ai-metrics-app","scrapeUrl":"http://100.64.1.29:9898/metrics","globalUrl":"http://100.64.1.29:9898/metrics","lastError":"","lastScrape":"2026-01-24T12:37:23.376371658Z","lastScrapeDuration":0.002276129,"health":"up","scrapeInterval":"15s","scrapeTimeout":"10s"},{"discoveredLabels":{"__address__":"100.64.1.29:9999","__meta_kubernetes_namespace":"ai-service-metrics","__meta_kubernetes_pod_annotation_cni_projectcalico_org_containerID":"986b8993739ec4e6c76edf4482d226861918d6377e2b7c2ea05c09ce5ec04f36","__meta_kubernetes_pod_annotation_cni_projectcalico_org_podIP":"100.64.1.29/32","__meta_kubernetes_pod_annotation_cni_projectcalico_org_podIPs":"100.64.1.29/32","__meta_kubernetes_pod_annotation_prometheus_io_path":"/metrics","__meta_kubernetes_pod_annotation_prometheus_io_port":"9898","__meta_kubernetes_pod_annotation_prometheus_io_scrape":"true","__meta_kubernetes_pod_annotationpresent_cni_projectcalico_org_containerID":"true","__meta_kubernetes_pod_annotationpresent_cni_projectcalico_org_podIP":"true","__meta_kubernetes_pod_annotationpresent_cni_projectcalico_org_podIPs":"true","__meta_kubernetes_pod_annotationpresent_prometheus_io_path":"true","__meta_kubernetes_pod_annotationpresent_prometheus_io_port":"true","__meta_kubernetes_pod_annotationpresent_prometheus_io_scrape":"true","__meta_kubernetes_pod_container_id":"containerd://7f6dfba44a1180675419bf106d2266b990fece62a05b33fe3f7819274a010c6f","__meta_kubernetes_pod_container_image":"stefanprodan/podinfo:6.0.0","__meta_kubernetes_pod_container_init":"false","__meta_kubernetes_pod_container_name":"podinfo","__meta_kubernetes_pod_container_port_name":"grpc","__meta_kubernetes_pod_container_port_number":"9999","__meta_kubernetes_pod_container_port_protocol":"TCP","__meta_kubernetes_pod_controller_kind":"ReplicaSet","__meta_kubernetes_pod_controller_name":"ai-metrics-app-7dc4fc8667","__meta_kubernetes_pod_host_ip":"10.180.3.162","__meta_kubernetes_pod_ip":"100.64.1.29","__meta_kubernetes_pod_label_app":"ai-metrics-app","__meta_kubernetes_pod_label_pod_template_hash":"7dc4fc8667","__meta_kubernetes_pod_labelpresent_app":"true","__meta_kubernetes_pod_labelpresent_pod_template_hash":"true","__meta_kubernetes_pod_name":"ai-metrics-app-7dc4fc8667-5v9zb","__meta_kubernetes_pod_node_name":"ip-10-180-3-162.eu-central-1.compute.internal","__meta_kubernetes_pod_phase":"Running","__meta_kubernetes_pod_ready":"true","__meta_kubernetes_pod_uid":"10af1a35-68a0-4694-ac98-8b90f8626548","__metrics_path__":"/metrics","__scheme__":"http","__scrape_interval__":"15s","__scrape_timeout__":"10s","job":"ai-metrics-app"},"labels":{"app":"ai-metrics-app","instance":"100.64.1.29:9999","job":"ai-metrics-app","kubernetes_namespace":"ai-service-metrics","kubernetes_pod_name":"ai-metrics-app-7dc4fc8667-5v9zb","pod_template_hash":"7dc4fc8667"},"scrapePool":"ai-metrics-app","scrapeUrl":"http://100.64.1.29:9999/metrics","globalUrl":"http://100.64.1.29:9999/metrics","lastError":"Get \"http://100.64.1.29:9999/metrics\": dial tcp 100.64.1.29:9999: connect: connection refused","lastScrape":"2026-01-24T12:37:11.811002474Z","lastScrapeDuration":0.000630855,"health":"down","scrapeInterval":"15s","scrapeTimeout":"10s"}],"droppedTargets":[{"discoveredLabels":{"__address__":"100.64.0.7:9090","__meta_kubernetes_namespace":"ai-service-metrics","__meta_kubernetes_pod_annotation_cni_projectcalico_org_containerID":"49ceb950e841ee13528f913ab7365efa4ac2bfab8e7374244f0341ad09b36886","__meta_kubernetes_pod_annotation_cni_projectcalico_org_podIP":"100.64.0.7/32","__meta_kubernetes_pod_annotation_cni_projectcalico_org_podIPs":"100.64.0.7/32","__meta_kubernetes_pod_annotationpresent_cni_projectcalico_org_containerID":"true","__meta_kubernetes_pod_annotationpresent_cni_projectcalico_org_podIP":"true","__meta_kubernetes_pod_annotationpresent_cni_projectcalico_org_podIPs":"true","__meta_kubernetes_pod_container_id":"containerd://3d1f636d6114c8e79536d866dbf64f023d132b1d447700ac78a0e1c6e50fbd6f","__meta_kubernetes_pod_container_image":"prom/prometheus:v2.45.0","__meta_kubernetes_pod_container_init":"false","__meta_kubernetes_pod_container_name":"prometheus","__meta_kubernetes_pod_container_port_name":"web","__meta_kubernetes_pod_container_port_number":"9090","__meta_kubernetes_pod_container_port_protocol":"TCP","__meta_kubernetes_pod_controller_kind":"ReplicaSet","__meta_kubernetes_pod_controller_name":"prometheus-7856b9d469","__meta_kubernetes_pod_host_ip":"10.180.31.12","__meta_kubernetes_pod_ip":"100.64.0.7","__meta_kubernetes_pod_label_app":"prometheus","__meta_kubernetes_pod_label_pod_template_hash":"7856b9d469","__meta_kubernetes_pod_labelpresent_app":"true","__meta_kubernetes_pod_labelpresent_pod_template_hash":"true","__meta_kubernetes_pod_name":"prometheus-7856b9d469-shwp7","__meta_kubernetes_pod_node_name":"ip-10-180-31-12.eu-central-1.compute.internal","__meta_kubernetes_pod_phase":"Running","__meta_kubernetes_pod_ready":"true","__meta_kubernetes_pod_uid":"b6a61f26-ed31-4d15-92b0-6f9d17cdce2b","__metrics_path__":"/metrics","__scheme__":"http","__scrape_interval__":"15s","__scrape_timeout__":"10s","job":"ai-metrics-app"}}]}}
+✅ Found 1 active target(s) in Prometheus
+ℹ️ Querying AI application metrics...
+http_requests_total query result:
+"result":[{"metric":{"__name__":"http_requests_total","app":"ai-metrics-app","instance":"100.64.1.29:9898","job":"ai-metrics-app","kubernetes_namespace":"ai-service-metrics","kubernetes_pod_name":"ai-metrics-app-7dc4fc8667-5v9zb","pod_template_hash":"7dc4fc8667","status":"200"},"value":[1769258246.784,"37"]}]
+version_info query result:
+"result":[]
+✅ Successfully collected metrics from AI application
+ℹ️ Stopping port-forward (PID: 99196)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Summary:
+  ✅ AI application deployed with Prometheus metrics endpoint
+  ✅ Prometheus monitoring system deployed and operational
+  ✅ Metrics discovery configured via pod annotations
+  ✅ Traffic generated to create metrics
+  ✅ Prometheus successfully scraped and stored metrics
+
+Note: This test deploys its own monitoring stack (Prometheus),
+therefore the conformance result should be marked as 'Partially Implemented'
+in PRODUCT.yaml as the platform does not provide built-in monitoring.
+
+The platform successfully allows deployment and operation of monitoring
+solutions capable of discovering and collecting metrics in Prometheus format.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Result
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ AI service metrics collection validated - platform supports Prometheus-based monitoring
+
+🎉 Test completed successfully!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Final Cleanup
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Test completed. Cleaning up...
+ℹ️ Deleting namespace: ai-service-metrics
+  namespace "ai-service-metrics" deleted
+ℹ️ Deleting cluster resource: clusterrole prometheus-ai-metrics
+  clusterrole.rbac.authorization.k8s.io "prometheus-ai-metrics" deleted
+ℹ️ Deleting cluster resource: clusterrolebinding prometheus-ai-metrics
+  clusterrolebinding.rbac.authorization.k8s.io "prometheus-ai-metrics" deleted
+✅ Cleanup completed

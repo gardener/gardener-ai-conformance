@@ -34,3 +34,39 @@ This repository houses the test plans, procedures, and results for Gardener's AI
 │   │   ├── ...
 ├── ...
 ```
+
+To run the conformance test suite, e.g., for Kubernetes `v1.34`:
+```bash
+# Create the AI conformance test cluster with GPU-enabled worker nodes
+gardenctl target LANDSCAPE
+kubectl apply -f v1.34/shoot.yaml
+
+# Add NVIDIA Helm chart repository for GPU operator installation
+helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
+helm repo update
+
+# Install NVIDIA GPU Operator with Garden Linux-specific configuration
+gardenctl target LANDSCAPE/core/ai-conformance
+helm upgrade --install \
+             --create-namespace \
+             --namespace gpu-operator \
+             gpu-operator \
+             nvidia/gpu-operator \
+             --values https://raw.githubusercontent.com/gardenlinux/gardenlinux-nvidia-installer/refs/heads/main/helm/gpu-operator-values.yaml
+
+# Monitor GPU operator installation progress until all pods are running and ready
+kubectl get pods -n gpu-operator -w
+
+# Inspect NVIDIA driver logs for successful initialization and any errors
+kubectl logs -n gpu-operator -l app=nvidia-driver-daemonset --tail=50
+
+# Confirm GPU resources are registered and allocatable on worker nodes
+kubectl get nodes -o jsonpath='{range .items[?(@.status.allocatable.nvidia\.com/gpu)]}{.metadata.name}: {.status.allocatable.nvidia\.com/gpu}{"\n"}{end}'
+
+# Execute all AI conformance test procedures for the specified Kubernetes version
+scripts/run-test-procedure.sh 1.34 all
+
+# Delete the AI conformance test cluster
+gardenctl target LANDSCAPE
+kubectl --namespace garden-core delete shoot ai-conformance
+```

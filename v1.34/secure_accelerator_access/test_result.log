@@ -1,0 +1,177 @@
+════════════════════════════════════════════════════════════════
+  Secure Accelerator Access Conformance Test
+════════════════════════════════════════════════════════════════
+
+Test Started: 2026-01-24 13:00:32 UTC
+Description: Validates that access to accelerators is properly isolated and mediated by the Kubernetes resource management framework
+Primary Namespace: secure-accelerator-access
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Requirement Specification
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MUST: Ensure that access to accelerators from within containers is properly isolated and mediated by the Kubernetes resource management framework (device plugin or DRA) and container runtime, preventing unauthorized access or interference between workloads.
+
+How we might test it:
+Deploy a Pod to a node with available accelerators, without requesting accelerator resources in the Pod spec. Execute a command in the Pod to probe for accelerator devices, and the command should fail or report that no accelerator devices are found.
+Create two Pods, each is allocated an accelerator resource. Execute a command in one Pod to attempt to access the other Pod’s accelerator, and should be denied.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Pre-Test Cleanup Check
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ No leftover resources found
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Checking Kubernetes Access
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ kubectl is available
+✅ Connected to Kubernetes cluster
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Setup: Create Test Namespace
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating namespace: secure-accelerator-access
+✅ Namespace created: secure-accelerator-access
+✅ Test namespace created
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test 1: Pod Without GPU Request
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Requirement: A pod that does not request GPU resources must not be able to access GPUs
+ℹ️ Creating pod without GPU resource request (but with affinity to guarantee GPU node placement)...
+pod/no-gpu-pod created
+✅ Pod created, waiting for completion...
+ℹ️ Waiting for pod no-gpu-pod to reach phase: Succeeded|Failed (timeout: 300s)...
+✅ Pod reached phase: Succeeded
+ℹ️ Pod logs:
+  Checking for GPU device files in /dev...
+  Contents of /dev:
+  No nvidia devices found
+  
+  SUCCESS: No GPU devices found in /dev/ - GPU access properly denied
+ℹ️ Pod exit code: 0
+✅ TEST 1 PASSED: Pod without GPU request cannot access GPUs
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test 2: GPU Isolation Between Pods
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Requirement: Pods with GPU allocations must be isolated - one pod cannot access another pod's GPU
+ℹ️ Creating deployment with 2 GPU pod replicas...
+deployment.apps/gpu-test-deployment created
+✅ GPU test deployment created
+ℹ️ Waiting for deployment to be ready (may trigger cluster autoscaling)...
+Waiting for deployment "gpu-test-deployment" rollout to finish: 0 of 2 updated replicas are available...
+Waiting for deployment "gpu-test-deployment" rollout to finish: 1 of 2 updated replicas are available...
+deployment "gpu-test-deployment" successfully rolled out
+ℹ️ Checking deployment status...
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
+gpu-test-deployment   2/2     2            2           47s
+NAME                                   READY   STATUS    RESTARTS   AGE
+gpu-test-deployment-56dbf45776-28k7c   1/1     Running   0          46s
+gpu-test-deployment-56dbf45776-j29z5   1/1     Running   0          46s
+ℹ️ Found pods: gpu-test-deployment-56dbf45776-28k7c and gpu-test-deployment-56dbf45776-j29z5
+ℹ️ Waiting for pods to complete initial tests...
+ℹ️ Pod gpu-test-deployment-56dbf45776-28k7c logs:
+  gpu-test-deployment-56dbf45776-28k7c: Starting GPU isolation test...
+  gpu-test-deployment-56dbf45776-28k7c: Verifying GPU device access...
+  gpu-test-deployment-56dbf45776-28k7c: Checking for GPU device files in /dev/...
+  crw-rw-rw- 1 root root 195, 254 Jan 24 13:01 nvidia-modeset
+  crw-rw-rw- 1 root root 240,   0 Jan 24 13:01 nvidia-uvm
+  crw-rw-rw- 1 root root 240,   1 Jan 24 13:01 nvidia-uvm-tools
+  crw-rw-rw- 1 root root 195,   0 Jan 24 13:01 nvidia0
+  crw-rw-rw- 1 root root 195, 255 Jan 24 13:01 nvidiactl
+  
+  /dev/nvidia-modeset
+  /dev/nvidia-uvm
+  /dev/nvidia-uvm-tools
+  /dev/nvidia0
+  /dev/nvidiactl
+  gpu-test-deployment-56dbf45776-28k7c: SUCCESS - GPU devices ARE accessible (/dev/nvidia* found)
+  
+  gpu-test-deployment-56dbf45776-28k7c: Collecting GPU information...
+  GPU 0: Tesla T4 (UUID: GPU-4a3d925e-6d23-b40f-ae12-a213181644a4)
+  gpu-test-deployment-56dbf45776-28k7c: My GPU UUID: GPU-4a3d925e-6d23-b40f-ae12-a213181644a4
+  gpu-test-deployment-56dbf45776-28k7c: Testing if I can see multiple GPUs (should only see 1)...
+  gpu-test-deployment-56dbf45776-28k7c: Number of GPUs visible: 1
+  gpu-test-deployment-56dbf45776-28k7c: SUCCESS - Can only see my allocated GPU
+  gpu-test-deployment-56dbf45776-28k7c: Testing device isolation - checking if unauthorized GPU devices are accessible...
+  gpu-test-deployment-56dbf45776-28k7c: SUCCESS - Cannot access unauthorized GPU devices
+  gpu-test-deployment-56dbf45776-28k7c: All isolation tests completed successfully
+  gpu-test-deployment-56dbf45776-28k7c: Keeping pod running for test observation...
+ℹ️ Pod gpu-test-deployment-56dbf45776-j29z5 logs:
+  gpu-test-deployment-56dbf45776-j29z5: Starting GPU isolation test...
+  gpu-test-deployment-56dbf45776-j29z5: Verifying GPU device access...
+  gpu-test-deployment-56dbf45776-j29z5: Checking for GPU device files in /dev/...
+  crw-rw-rw- 1 root root 195, 254 Jan 24 13:00 nvidia-modeset
+  crw-rw-rw- 1 root root 240,   0 Jan 24 13:00 nvidia-uvm
+  crw-rw-rw- 1 root root 240,   1 Jan 24 13:00 nvidia-uvm-tools
+  crw-rw-rw- 1 root root 195,   0 Jan 24 13:00 nvidia0
+  crw-rw-rw- 1 root root 195, 255 Jan 24 13:00 nvidiactl
+  
+  /dev/nvidia-modeset
+  /dev/nvidia-uvm
+  /dev/nvidia-uvm-tools
+  /dev/nvidia0
+  /dev/nvidiactl
+  gpu-test-deployment-56dbf45776-j29z5: SUCCESS - GPU devices ARE accessible (/dev/nvidia* found)
+  
+  gpu-test-deployment-56dbf45776-j29z5: Collecting GPU information...
+  GPU 0: Tesla T4 (UUID: GPU-8dbfb3aa-756e-0cab-1dee-3311e65cf017)
+  gpu-test-deployment-56dbf45776-j29z5: My GPU UUID: GPU-8dbfb3aa-756e-0cab-1dee-3311e65cf017
+  gpu-test-deployment-56dbf45776-j29z5: Testing if I can see multiple GPUs (should only see 1)...
+  gpu-test-deployment-56dbf45776-j29z5: Number of GPUs visible: 1
+  gpu-test-deployment-56dbf45776-j29z5: SUCCESS - Can only see my allocated GPU
+  gpu-test-deployment-56dbf45776-j29z5: Testing device isolation - checking if unauthorized GPU devices are accessible...
+  gpu-test-deployment-56dbf45776-j29z5: SUCCESS - Cannot access unauthorized GPU devices
+  gpu-test-deployment-56dbf45776-j29z5: All isolation tests completed successfully
+  gpu-test-deployment-56dbf45776-j29z5: Keeping pod running for test observation...
+ℹ️ GPU UUID Analysis:
+ℹ️   Pod gpu-test-deployment-56dbf45776-28k7c GPU UUID: GPU-4a3d925e-6d23-b40f-ae12-a213181644a4
+ℹ️   Pod gpu-test-deployment-56dbf45776-j29z5 GPU UUID: GPU-8dbfb3aa-756e-0cab-1dee-3311e65cf017
+✅ SUCCESS: Pods have different GPU UUIDs - proper hardware isolation confirmed
+ℹ️   Pod gpu-test-deployment-56dbf45776-28k7c GPU: GPU-4a3d925e-6d23-b40f-ae12-a213181644a4
+ℹ️   Pod gpu-test-deployment-56dbf45776-j29z5 GPU: GPU-8dbfb3aa-756e-0cab-1dee-3311e65cf017
+✅ TEST 2 PASSED: GPU isolation is working correctly
+✅   - Pods allocated different GPUs
+✅   - Each pod can only see exactly 1 GPU
+✅   - Pods cannot access unauthorized GPU device files
+✅   - Container runtime properly mediates GPU access
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Test Results Summary:
+✅ TEST 1: Access Denial
+✅ TEST 2: GPU Isolation
+
+CONFORMANCE RESULT:
+✅ Platform MEETS the secure accelerator access requirement.
+
+Validated capabilities:
+  ✓ Pods without GPU requests cannot access GPU devices
+  ✓ Pods with GPU requests are properly isolated from each other
+  ✓ Container runtime mediates all GPU device access
+  ✓ Kubernetes resource management framework (NVIDIA device plugin) enforces allocation
+
+Access to accelerators is properly isolated and mediated by the
+Kubernetes resource management framework and container runtime,
+preventing unauthorized access or interference between workloads.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Result
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ All secure accelerator access requirements validated successfully
+
+🎉 Test completed successfully!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Final Cleanup
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Test completed. Cleaning up...
+ℹ️ Deleting namespace: secure-accelerator-access
+  namespace "secure-accelerator-access" deleted
+✅ Cleanup completed

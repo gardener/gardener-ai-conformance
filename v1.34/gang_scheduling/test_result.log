@@ -1,0 +1,241 @@
+════════════════════════════════════════════════════════════════
+  Gang Scheduling Conformance Test
+════════════════════════════════════════════════════════════════
+
+Test Started: 2026-01-24 12:48:32 UTC
+Description: Validates that the platform supports gang scheduling (all-or-nothing scheduling) for distributed AI workloads
+Primary Namespace: gang-scheduling
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Requirement Specification
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MUST: The platform must allow for the installation and successful operation of at least one gang scheduling solution that ensures all-or-nothing scheduling for distributed AI workloads (e.g. Kueue, Volcano, etc.) To be conformant, the vendor must demonstrate that their platform can successfully run at least one such solution.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Pre-Test Cleanup Check
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ No leftover resources found
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Checking Kubernetes Access
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ kubectl is available
+✅ Connected to Kubernetes cluster
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 1: Create Test Namespace
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating namespace: gang-scheduling
+✅ Namespace created: gang-scheduling
+✅ Test namespace created
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 2: Install Kueue Gang Scheduling Solution
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating Kueue namespace
+ℹ️ Creating namespace: kueue-system
+✅ Namespace created: kueue-system
+ℹ️ Installing Kueue v0.14.2
+ℹ️ Kueue provides gang scheduling capabilities for Kubernetes workloads
+✅ Kueue manifests applied successfully
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 3: Wait for Kueue Deployment
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Waiting for deployment kueue-controller-manager in namespace kueue-system to be available (timeout: 300s)...
+  deployment.apps/kueue-controller-manager condition met
+✅ Deployment is available
+✅ Kueue is ready
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 4: Verify Kueue Installation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Checking Kueue pods:
+NAME                                        READY   STATUS    RESTARTS   AGE
+kueue-controller-manager-5c74677ffd-lg5sk   1/1     Running   0          15s
+✅ Kueue pods are running
+ℹ️ Verifying Kueue CRDs:
+admissionchecks                                              kueue.x-k8s.io/v1beta1              false        AdmissionCheck
+clusterqueues                       cq                       kueue.x-k8s.io/v1beta1              false        ClusterQueue
+cohorts                                                      kueue.x-k8s.io/v1beta1              false        Cohort
+localqueues                         queue,queues,lq          kueue.x-k8s.io/v1beta1              true         LocalQueue
+multikueueclusters                                           kueue.x-k8s.io/v1beta1              false        MultiKueueCluster
+multikueueconfigs                                            kueue.x-k8s.io/v1beta1              false        MultiKueueConfig
+provisioningrequestconfigs                                   kueue.x-k8s.io/v1beta1              false        ProvisioningRequestConfig
+resourceflavors                     flavor,flavors,rf        kueue.x-k8s.io/v1beta1              false        ResourceFlavor
+topologies                                                   kueue.x-k8s.io/v1beta1              false        Topology
+workloadpriorityclasses                                      kueue.x-k8s.io/v1beta1              false        WorkloadPriorityClass
+workloads                           wl                       kueue.x-k8s.io/v1beta1              true         Workload
+✅ Kueue CRDs are available
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 5: Configure Kueue Resources
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Creating ResourceFlavor, ClusterQueue, and LocalQueue
+resourceflavor.kueue.x-k8s.io/default-flavor created
+clusterqueue.kueue.x-k8s.io/cluster-queue created
+localqueue.kueue.x-k8s.io/user-queue created
+✅ Kueue resources configured successfully
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 6: Submit Gang-Scheduled Job
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Submitting a multi-pod job to test all-or-nothing gang scheduling
+ℹ️ This job requires 3 pods to run in parallel (distributed workload)
+ℹ️ Gang scheduling ensures all 3 pods are scheduled together or none at all
+job.batch/gang-scheduled-job created
+✅ Gang-scheduled job created
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 7: Monitor Job Admission and Gang Scheduling
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Waiting for Kueue to admit the job (all-or-nothing scheduling)...
+ℹ️ Checking Kueue Workload admission status:
+NAME                           QUEUE        RESERVED IN     ADMITTED   FINISHED   AGE
+job-gang-scheduled-job-d78dd   user-queue   cluster-queue   True                  5s
+✅ Job was admitted by Kueue for gang scheduling
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 8: Verify All-or-Nothing Gang Scheduling
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Checking that all 3 pods are scheduled together...
+NAME                       READY   STATUS    RESTARTS   AGE
+gang-scheduled-job-l99gj   1/1     Running   0          10s
+gang-scheduled-job-vxvm8   1/1     Running   0          10s
+gang-scheduled-job-z9ckc   1/1     Running   0          10s
+✅ All 3 pods were created (gang scheduling working)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 9: Wait for Job Completion
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Waiting for distributed workload to complete (max 60s)...
+job.batch/gang-scheduled-job condition met
+✅ Gang-scheduled job completed successfully
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 10: Verify Job Completion
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NAME                 STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS   IMAGES         SELECTOR
+gang-scheduled-job   Complete   3/3           17s        18s   worker       busybox:1.36   batch.kubernetes.io/controller-uid=7e9fa78e-486c-4d57-a073-bf00e7e5c9da
+✅ Job completed successfully with all pods
+ℹ️ Pod logs demonstrating distributed workload coordination:
+ℹ️ Logs from gang-scheduled-job-l99gj:
+  Pod gang-scheduled-job-l99gj starting at Sat Jan 24 12:49:04 UTC 2026
+  Simulating distributed AI workload coordination
+  Pod gang-scheduled-job-l99gj completed at Sat Jan 24 12:49:14 UTC 2026
+ℹ️ Logs from gang-scheduled-job-vxvm8:
+  Pod gang-scheduled-job-vxvm8 starting at Sat Jan 24 12:49:04 UTC 2026
+  Simulating distributed AI workload coordination
+  Pod gang-scheduled-job-vxvm8 completed at Sat Jan 24 12:49:14 UTC 2026
+ℹ️ Logs from gang-scheduled-job-z9ckc:
+  Pod gang-scheduled-job-z9ckc starting at Sat Jan 24 12:49:03 UTC 2026
+  Simulating distributed AI workload coordination
+  Pod gang-scheduled-job-z9ckc completed at Sat Jan 24 12:49:13 UTC 2026
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Step 11: Final Verification
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Verifying gang scheduling solution is operational
+✅ Gang scheduling solution (Kueue) is operational
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Summary:
+  ✅ Kueue gang scheduling solution installed successfully
+  ✅ Kueue is operational and managing workloads
+  ✅ Multi-pod job was gang-scheduled (all-or-nothing scheduling)
+  ✅ All 3 pods were scheduled together atomically
+  ✅ Distributed workload completed successfully
+
+The platform successfully demonstrates gang scheduling capability
+for distributed AI workloads as required by the conformance standard.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Test Result
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Gang Scheduling requirement met - Kueue successfully provides all-or-nothing scheduling for distributed workloads
+
+🎉 Test completed successfully!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔹 Final Cleanup
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ℹ️ Test completed. Cleaning up...
+ℹ️ Executing: kubectl delete -f https://github.com/kubernetes-sigs/kueue/releases/download/v0.14.2/manifests.yaml --ignore-not-found=true 2>&1 | sed 's/^/  /' >> ${LOG_FILE} || true
+  namespace "kueue-system" deleted
+  customresourcedefinition.apiextensions.k8s.io "admissionchecks.kueue.x-k8s.io" deleted
+  customresourcedefinition.apiextensions.k8s.io "clusterqueues.kueue.x-k8s.io" deleted
+  customresourcedefinition.apiextensions.k8s.io "cohorts.kueue.x-k8s.io" deleted
+  customresourcedefinition.apiextensions.k8s.io "localqueues.kueue.x-k8s.io" deleted
+  customresourcedefinition.apiextensions.k8s.io "multikueueclusters.kueue.x-k8s.io" deleted
+  customresourcedefinition.apiextensions.k8s.io "multikueueconfigs.kueue.x-k8s.io" deleted
+  customresourcedefinition.apiextensions.k8s.io "provisioningrequestconfigs.kueue.x-k8s.io" deleted
+  customresourcedefinition.apiextensions.k8s.io "resourceflavors.kueue.x-k8s.io" deleted
+  customresourcedefinition.apiextensions.k8s.io "topologies.kueue.x-k8s.io" deleted
+  customresourcedefinition.apiextensions.k8s.io "workloadpriorityclasses.kueue.x-k8s.io" deleted
+  customresourcedefinition.apiextensions.k8s.io "workloads.kueue.x-k8s.io" deleted
+  serviceaccount "kueue-controller-manager" deleted
+  role.rbac.authorization.k8s.io "kueue-leader-election-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-batch-admin-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-batch-user-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-clusterqueue-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-clusterqueue-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-cohort-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-cohort-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-jaxjob-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-jaxjob-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-job-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-job-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-jobset-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-jobset-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-localqueue-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-localqueue-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-manager-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-metrics-auth-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-metrics-reader" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-mpijob-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-mpijob-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-paddlejob-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-paddlejob-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-pending-workloads-cq-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-pending-workloads-lq-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-pytorchjob-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-pytorchjob-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-raycluster-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-raycluster-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-rayjob-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-rayjob-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-resourceflavor-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-resourceflavor-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-tfjob-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-tfjob-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-topology-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-topology-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-trainjob-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-trainjob-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-workload-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-workload-viewer-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-xgboostjob-editor-role" deleted
+  clusterrole.rbac.authorization.k8s.io "kueue-xgboostjob-viewer-role" deleted
+  rolebinding.rbac.authorization.k8s.io "kueue-visibility-server-auth-reader" deleted
+  rolebinding.rbac.authorization.k8s.io "kueue-leader-election-rolebinding" deleted
+  clusterrolebinding.rbac.authorization.k8s.io "kueue-manager-rolebinding" deleted
+  clusterrolebinding.rbac.authorization.k8s.io "kueue-metrics-auth-rolebinding" deleted
+  configmap "kueue-manager-config" deleted
+  secret "kueue-webhook-server-cert" deleted
+  service "kueue-controller-manager-metrics-service" deleted
+  service "kueue-visibility-server" deleted
+  service "kueue-webhook-service" deleted
+  deployment.apps "kueue-controller-manager" deleted
+  apiservice.apiregistration.k8s.io "v1beta1.visibility.kueue.x-k8s.io" deleted
+  mutatingwebhookconfiguration.admissionregistration.k8s.io "kueue-mutating-webhook-configuration" deleted
+  validatingwebhookconfiguration.admissionregistration.k8s.io "kueue-validating-webhook-configuration" deleted
+ℹ️ Deleting namespace: gang-scheduling
+  namespace "gang-scheduling" deleted
+✅ Cleanup completed
